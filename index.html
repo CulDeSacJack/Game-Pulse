@@ -47,7 +47,7 @@
   @keyframes badgePop { 0%{transform:scale(0)} 60%{transform:scale(1.2)} 100%{transform:scale(1)} }
 
   /* ── Layout ── */
-  .app        { background:var(--bg-page); height:100vh; height:100dvh; max-width:480px; margin:0 auto; display:flex; flex-direction:column; overflow:hidden; }
+  .app        { background:var(--bg-page); position:fixed; top:0; left:0; right:0; bottom:0; max-width:480px; margin:0 auto; display:flex; flex-direction:column; overflow:hidden; }
   .header     { position:relative; display:flex; align-items:center; justify-content:space-between; padding:calc(var(--safe-top) + 12px) 16px 9px; border-bottom:1px solid rgba(42,42,60,.9); flex-shrink:0; background:
     radial-gradient(circle at top left, rgba(0,255,136,.08), transparent 34%),
     linear-gradient(180deg, rgba(17,17,25,.96), rgba(13,13,22,.92)); overflow:hidden; }
@@ -1918,7 +1918,7 @@ function getTopStoryClusters(hoursWindow = 12) {
   const cutoff = Date.now() - hoursWindow * 60 * 60 * 1000;
   const recent = articles.filter(a => {
     const t = a.pubDate instanceof Date ? a.pubDate.getTime() : new Date(a.pubDate).getTime();
-    return t >= cutoff;
+    return t >= cutoff && !isArticleRead(a.id);
   });
   if (recent.length < 3) return [];
 
@@ -2551,6 +2551,16 @@ function renderSources() {
 /* ═══════════════════════════════════════════════════════════════
    EVENT LISTENERS
 ═══════════════════════════════════════════════════════════════ */
+function renderPreservingScroll(scrollSelector = ".sources-tab") {
+  const container = document.querySelector(scrollSelector);
+  const scrollPos = container ? container.scrollTop : 0;
+  render();
+  requestAnimationFrame(() => {
+    const newContainer = document.querySelector(scrollSelector);
+    if (newContainer) newContainer.scrollTop = scrollPos;
+  });
+}
+
 function attachEventListeners() {
   // Search
   const searchInput = document.getElementById("searchInput");
@@ -2675,7 +2685,7 @@ function attachEventListeners() {
         pinnedTopics.push(kw);
         savePinnedTopics();
         pinTopicInput.value = "";
-        render();
+        renderPreservingScroll();
       }
     };
     addPinTopicBtn.addEventListener("click", doAddPin);
@@ -2687,7 +2697,7 @@ function attachEventListeners() {
       pinnedTopics = pinnedTopics.filter(t => t !== kw);
       if (pinnedOnly && pinnedTopics.length === 0) pinnedOnly = false;
       savePinnedTopics();
-      render();
+      renderPreservingScroll();
     });
   });
   const hideReadToggleBtn = document.getElementById("hideReadToggleBtn");
@@ -2769,11 +2779,11 @@ function attachEventListeners() {
         xAccounts = normalizeXAccounts(xAccounts, removedDefaultXHandles);
         saveRemovedDefaultXHandles();
         saveXAccounts();
-        render();
+        renderPreservingScroll();
         return;
       }
       if (xAccounts.some(a => a.handle.toLowerCase() === handle.toLowerCase())) { errEl.textContent = "Already in your list!"; wrapEl.classList.add("err"); return; }
-      xAccounts.push({ handle, description: "" }); saveXAccounts(); render();
+      xAccounts.push({ handle, description: "" }); saveXAccounts(); renderPreservingScroll();
     };
     addBtn.addEventListener("click", doAdd);
     xInput.addEventListener("keydown", e => { if (e.key === "Enter") doAdd(); });
@@ -2792,7 +2802,7 @@ function attachEventListeners() {
     const remainingSocialNames = new Set(getSocialSources().map(source => source.name));
     if (socialFilter !== "All" && !remainingSocialNames.has(socialFilter)) socialFilter = "All";
     saveXAccounts();
-    render();
+    renderPreservingScroll();
   }));
 
   const quietHoursToggle = document.getElementById("quietHoursToggle");
@@ -2800,7 +2810,7 @@ function attachEventListeners() {
     quietHoursToggle.addEventListener("click", () => {
       quietHours = { ...quietHours, enabled: !quietHours.enabled };
       saveQuietHours();
-      render();
+      renderPreservingScroll();
     });
   }
 
@@ -2846,7 +2856,7 @@ function attachEventListeners() {
       if (!Object.keys(readArticles).length) return;
       if (window.confirm("Clear read history for both Feed and Social?")) {
         clearReadHistory();
-        render();
+        renderPreservingScroll();
       }
     });
   }
@@ -2860,11 +2870,11 @@ function attachEventListeners() {
     notificationPrefs[sourceId] = nextEnabled;
     saveNotificationPrefs();
     if (nextEnabled) await requestNotificationPermission();
-    render();
+    renderPreservingScroll();
   }));
-  document.querySelectorAll(".color-btn[data-toggle]").forEach(btn => btn.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); openPaletteId = openPaletteId === btn.dataset.toggle ? null : btn.dataset.toggle; render(); }));
-  document.querySelectorAll(".swatch[data-src]").forEach(sw => sw.addEventListener("click", e => { e.stopPropagation(); customColors[sw.dataset.src] = sw.dataset.color; saveCustomColors(); openPaletteId = null; render(); }));
-  document.querySelectorAll(".reset-color[data-reset]").forEach(btn => btn.addEventListener("click", e => { e.stopPropagation(); delete customColors[btn.dataset.reset]; saveCustomColors(); openPaletteId = null; render(); }));
+  document.querySelectorAll(".color-btn[data-toggle]").forEach(btn => btn.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); openPaletteId = openPaletteId === btn.dataset.toggle ? null : btn.dataset.toggle; renderPreservingScroll(); }));
+  document.querySelectorAll(".swatch[data-src]").forEach(sw => sw.addEventListener("click", e => { e.stopPropagation(); customColors[sw.dataset.src] = sw.dataset.color; saveCustomColors(); openPaletteId = null; renderPreservingScroll(); }));
+  document.querySelectorAll(".reset-color[data-reset]").forEach(btn => btn.addEventListener("click", e => { e.stopPropagation(); delete customColors[btn.dataset.reset]; saveCustomColors(); openPaletteId = null; renderPreservingScroll(); }));
   document.querySelectorAll(".source-mode-btn[data-deal-source][data-deal-mode]").forEach(btn => btn.addEventListener("click", e => {
     e.preventDefault();
     e.stopPropagation();
@@ -2874,7 +2884,7 @@ function attachEventListeners() {
     if (mode === "auto") delete dealSourcePrefs[sourceId];
     else dealSourcePrefs[sourceId] = mode;
     saveDealSourcePrefs();
-    render();
+    renderPreservingScroll();
   }));
 }
 
@@ -2965,6 +2975,32 @@ function handleScroll(e) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   VIEWPORT RECALC (iOS PWA resume fix)
+═══════════════════════════════════════════════════════════════ */
+function forceViewportRecalc() {
+  const app = document.querySelector(".app");
+  if (!app) return;
+  app.style.height = "99.9dvh";
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      app.style.height = "";
+    });
+  });
+}
+
+forceViewportRecalc();
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    forceViewportRecalc();
+  }
+});
+
+window.addEventListener("resize", () => {
+  forceViewportRecalc();
+});
+
+/* ═══════════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════════ */
 // Init — load all saved data (async-safe), then render and fetch feeds
@@ -2986,6 +3022,7 @@ function handleScroll(e) {
   await loadLastVisited();
   setupNotificationPermissionPrompt();
   render();
+  forceViewportRecalc();
   setupPullToRefresh();
   setupScrollWatcher();
   loadAllFeeds();
