@@ -32,7 +32,6 @@
     --safe-bottom-fallback:0px;
     --bottom-nav-gap:0px;
     --safe-left:env(safe-area-inset-left, 0px);
-    --app-height:100dvh;
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { height: 100%; height: -webkit-fill-available; background: var(--bg-page); }
@@ -75,6 +74,21 @@
   .tab-label  { display:block; width:100%; text-align:center; font-size:10px; line-height:1.1; font-family:'DM Sans',sans-serif; font-weight:500; letter-spacing:0; text-transform:none; }
   .tab-btn.active .tab-label { font-weight:600; }
   .tab-badge  { position:absolute; top:3px; right:calc(50% - 18px); min-width:17px; height:17px; border-radius:999px; background:#ff3b30; color:#fff; font-size:10px; font-weight:700; font-family:'DM Sans',sans-serif; display:flex; align-items:center; justify-content:center; padding:0 4px; border:1.5px solid rgba(18,18,24,.92); animation:badgePop .3s ease both; }
+
+  /* ── PWA Standalone bottom-gap fix (iPhone home indicator) ── */
+  @media (display-mode: standalone) {
+    html, body { background:#121217 !important; }
+    .tab-bar { padding-bottom:max(var(--safe-bottom), var(--safe-bottom-fallback), 20px) !important; }
+    .app::after { content:""; position:fixed; bottom:0; left:0; right:0; height:env(safe-area-inset-bottom, 40px); background:#121217; z-index:0; pointer-events:none; }
+    .tab-bar { position:relative; z-index:1; }
+  }
+  @supports (-webkit-touch-callout: none) {
+    /* iOS-specific: also target navigator.standalone via the apple meta tag */
+    html.pwa-standalone, html.pwa-standalone body { background:#121217 !important; }
+    html.pwa-standalone .tab-bar { padding-bottom:max(var(--safe-bottom), var(--safe-bottom-fallback), 20px) !important; }
+    html.pwa-standalone .app::after { content:""; position:fixed; bottom:0; left:0; right:0; height:env(safe-area-inset-bottom, 40px); background:#121217; z-index:0; pointer-events:none; }
+    html.pwa-standalone .tab-bar { position:relative; z-index:1; }
+  }
 
   /* ── Search ── */
   .search-box { display:flex; align-items:center; background:var(--bg-panel); border:1px solid var(--bg-muted); border-radius:10px; padding:8px 12px; gap:8px; }
@@ -3004,12 +3018,17 @@ function handleScroll(e) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   VIEWPORT RECALC (iOS PWA resume fix)
+   PWA STANDALONE DETECTION & VIEWPORT FIX
 ═══════════════════════════════════════════════════════════════ */
+// Detect iOS standalone (home screen) mode and add class for CSS targeting
+if (window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches) {
+  document.documentElement.classList.add("pwa-standalone");
+}
+
 function forceViewportRecalc() {
+  // Trigger a layout recalc without touching height (which causes the gap)
   const app = document.querySelector(".app");
   if (!app) return;
-  // Force layout recalc without setting height (inset:0 handles sizing)
   app.style.transform = "translateZ(0)";
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
@@ -3022,20 +3041,15 @@ function syncViewportMetrics() {
   const root = document.documentElement;
   if (!root) return;
 
-  const viewportHeight = window.visualViewport?.height || window.innerHeight || root.clientHeight;
-  root.style.setProperty("--app-height", `${Math.round(viewportHeight)}px`);
-
+  // Probe whether env(safe-area-inset-bottom) returns a real value
   const envProbe = document.createElement("div");
-  envProbe.style.position = "absolute";
-  envProbe.style.visibility = "hidden";
-  envProbe.style.pointerEvents = "none";
-  envProbe.style.height = "0";
-  envProbe.style.paddingBottom = "env(safe-area-inset-bottom)";
+  envProbe.style.cssText = "position:absolute;visibility:hidden;pointer-events:none;height:0;padding-bottom:env(safe-area-inset-bottom)";
   document.body.appendChild(envProbe);
   const envSafeBottom = parseFloat(getComputedStyle(envProbe).paddingBottom) || 0;
   envProbe.remove();
 
-  // In some iOS fullscreen/PWA cases env() reports 0 even though the home indicator inset exists.
+  // If env() reports 0 but we know safe area exists (visualViewport is smaller), compute fallback
+  const viewportHeight = window.visualViewport?.height || window.innerHeight || root.clientHeight;
   const fallbackSafeBottom = envSafeBottom > 0 ? 0 : Math.max(0, window.innerHeight - viewportHeight);
   root.style.setProperty("--safe-bottom-fallback", `${Math.round(fallbackSafeBottom)}px`);
 }
