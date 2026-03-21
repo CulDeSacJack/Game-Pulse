@@ -51,7 +51,7 @@
   @keyframes badgePop { 0%{transform:scale(0)} 60%{transform:scale(1.2)} 100%{transform:scale(1)} }
 
   /* ── Layout ── */
-  .app        { background:var(--bg-page); position:fixed; inset:0; width:100%; height:var(--app-height); min-height:-webkit-fill-available; max-width:480px; margin:0 auto; display:flex; flex-direction:column; overflow:hidden; }
+  .app        { background:var(--bg-page); position:fixed; inset:0; width:100%; max-width:480px; margin:0 auto; display:flex; flex-direction:column; overflow:hidden; }
   .header     { position:relative; display:flex; align-items:center; justify-content:space-between; padding:calc(var(--safe-top) + 12px) 16px 9px; border-bottom:1px solid rgba(42,42,60,.9); flex-shrink:0; background:
     radial-gradient(circle at top left, rgba(0,255,136,.08), transparent 34%),
     linear-gradient(180deg, rgba(17,17,25,.96), rgba(13,13,22,.92)); overflow:hidden; }
@@ -3009,10 +3009,11 @@ function handleScroll(e) {
 function forceViewportRecalc() {
   const app = document.querySelector(".app");
   if (!app) return;
-  app.style.height = "99.9dvh";
+  // Force layout recalc without setting height (inset:0 handles sizing)
+  app.style.transform = "translateZ(0)";
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      app.style.height = "";
+      app.style.transform = "";
     });
   });
 }
