@@ -62,17 +62,15 @@
   .tab-content { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 
   /* ── Tab Bar ── */
-  .tab-bar    { position:relative; display:flex; background:
-    linear-gradient(180deg, rgba(16,16,25,.94), rgba(11,11,18,.98));
-    border-top:1px solid rgba(42,42,60,.95); box-shadow:0 -14px 32px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.02); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); flex-shrink:0; padding-bottom:calc(var(--safe-bottom) + var(--bottom-nav-gap)); }
-  .tab-bar::before { content:""; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg, transparent, rgba(0,204,255,.28), transparent); pointer-events:none; }
-  .tab-btn    { flex:1; background:none; border:none; cursor:pointer; padding:11px 8px 13px; display:flex; flex-direction:column; align-items:center; gap:4px; color:var(--text-soft); transition:color .15s; position:relative; }
-  .tab-btn.active { color:var(--accent-green); text-shadow:0 0 18px rgba(0,255,136,.12); }
-  .tab-btn.active::before { content:''; position:absolute; top:0; left:50%; transform:translateX(-50%); width:36px; height:2px; border-radius:0 0 3px 3px; background:linear-gradient(90deg,var(--accent-green),var(--accent-cyan)); }
-  .tab-btn svg { width:21px; height:21px; }
-  .tab-label  { display:block; width:100%; text-align:center; font-size:9px; line-height:1; font-family:'Chakra Petch',sans-serif; letter-spacing:.06em; }
-  .tab-btn.active .tab-label { font-weight:700; }
-  .tab-badge  { position:absolute; top:4px; right:calc(50% - 20px); min-width:16px; height:16px; border-radius:99px; background:linear-gradient(135deg,var(--accent-green),var(--accent-cyan)); color:#000; font-size:9px; font-weight:700; font-family:'Chakra Petch',sans-serif; display:flex; align-items:center; justify-content:center; padding:0 4px; animation:badgePop .3s ease both; }
+  .tab-bar    { position:relative; display:flex; background:rgba(18, 18, 24, .82); border-top:1px solid rgba(255,255,255,.08); box-shadow:0 -10px 24px rgba(0,0,0,.24); backdrop-filter:blur(24px) saturate(1.2); -webkit-backdrop-filter:blur(24px) saturate(1.2); flex-shrink:0; padding-bottom:calc(var(--safe-bottom) + var(--bottom-nav-gap)); }
+  .tab-bar::before { content:""; position:absolute; top:0; left:0; right:0; height:1px; background:rgba(255,255,255,.06); pointer-events:none; }
+  .tab-btn    { flex:1; background:none; border:none; cursor:pointer; padding:9px 8px 11px; display:flex; flex-direction:column; align-items:center; gap:3px; color:#8e8e93; transition:color .18s ease, opacity .18s ease; position:relative; opacity:.92; }
+  .tab-btn.active { color:#f2f2f7; opacity:1; }
+  .tab-btn.active::before { content:none; }
+  .tab-btn svg { width:20px; height:20px; }
+  .tab-label  { display:block; width:100%; text-align:center; font-size:10px; line-height:1.1; font-family:'DM Sans',sans-serif; font-weight:500; letter-spacing:0; text-transform:none; }
+  .tab-btn.active .tab-label { font-weight:600; }
+  .tab-badge  { position:absolute; top:3px; right:calc(50% - 18px); min-width:17px; height:17px; border-radius:999px; background:#ff3b30; color:#fff; font-size:10px; font-weight:700; font-family:'DM Sans',sans-serif; display:flex; align-items:center; justify-content:center; padding:0 4px; border:1.5px solid rgba(18,18,24,.92); animation:badgePop .3s ease both; }
 
   /* ── Search ── */
   .search-box { display:flex; align-items:center; background:var(--bg-panel); border:1px solid var(--bg-muted); border-radius:10px; padding:8px 12px; gap:8px; }
@@ -391,17 +389,17 @@
     .card-thumb { width:78px; height:78px; }
     .sources-tab { padding-left:20px; padding-right:20px; }
     .sources-hero { padding:18px 20px; }
-    .tab-bar { padding-bottom:calc(var(--safe-bottom) + 14px); }
-    .tab-btn { padding:13px 8px 15px; gap:5px; }
+    .tab-bar { padding-bottom:calc(var(--safe-bottom) + 12px); }
+    .tab-btn { padding:11px 8px 12px; gap:4px; }
     .tab-btn svg { width:22px; height:22px; }
-    .tab-label { font-size:10px; letter-spacing:.08em; }
+    .tab-label { font-size:10px; letter-spacing:0; }
     .scroll-top-btn {
       right:max(calc(20px + var(--safe-right)), calc((100vw - 520px)/2 + 20px));
     }
   }
 
   @media (max-width: 430px) {
-    :root { --bottom-nav-gap:10px; }
+    :root { --bottom-nav-gap:8px; }
     .header { padding:calc(var(--safe-top) + 10px) 12px 8px; }
     .logo { font-size:18px; letter-spacing:.07em; }
     .logo-sub { font-size:9px; letter-spacing:.11em; }
@@ -437,6 +435,9 @@
     .sources-toolbar { flex-direction:column; align-items:stretch; }
     .source-actions { justify-content:flex-start; }
     .source-action-btn { flex:1; min-width:0; }
+    .tab-btn { padding:8px 6px 10px; gap:3px; }
+    .tab-btn svg { width:19px; height:19px; }
+    .tab-label { font-size:10px; }
     .scroll-top-btn { width:38px; height:38px; }
   }
 </style>
@@ -464,25 +465,25 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1" fill="currentColor" stroke="none"/>
       </svg>
-      <span class="tab-label">FEED</span>
+      <span class="tab-label">Feed</span>
     </button>
     <button class="tab-btn" data-tab="social" onclick="switchTab('social')">
       <svg viewBox="0 0 568 501" fill="currentColor" style="width:18px;height:18px;">
         <path d="M123.121 33.664C188.241 82.553 258.281 181.68 284 234.873c25.719-53.192 95.759-152.32 160.879-201.21C491.866-1.611 568-28.906 568 49.341c0 17.078-9.978 143.47-15.87 164.038C536.272 272.638 474.428 302.862 418.5 293.072c97.708 17.1 122.542 73.695 68.875 130.29C376.812 539.02 317.089 492.428 295.66 428.382c-2.458-7.34-3.615-10.755-3.768-7.856-.155-2.898-1.31.517-3.769 7.856C266.91 492.428 207.188 539.019 96.625 423.362 42.958 366.767 67.792 310.172 165.5 293.072c-55.928 9.79-117.772-20.434-133.63-79.693C25.978 192.81 16 66.42 16 49.34 16-28.906 92.134-1.61 123.121 33.664z"/>
       </svg>
-      <span class="tab-label">SOCIAL</span>
+      <span class="tab-label">Social</span>
     </button>
     <button class="tab-btn" data-tab="bookmarks" onclick="switchTab('bookmarks')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
       </svg>
-      <span class="tab-label">SAVED</span>
+      <span class="tab-label">Saved</span>
     </button>
     <button class="tab-btn" data-tab="sources" onclick="switchTab('sources')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
       </svg>
-      <span class="tab-label">SOURCES</span>
+      <span class="tab-label">Sources</span>
     </button>
   </div>
 </div>
@@ -805,6 +806,12 @@ function storageSet(key, value) {
   }
   try { localStorage.setItem(key, value); } catch {}
 }
+
+try {
+  if (typeof history !== "undefined" && "scrollRestoration" in history) {
+    history.scrollRestoration = "manual";
+  }
+} catch {}
 
 async function loadRemovedDefaultXHandles() {
   try {
@@ -1882,18 +1889,30 @@ function switchTab(tab) {
   if (tab === "social") { newSocialCount = 0; socialRenderLimit = INITIAL_RENDER_COUNT; scheduleVisitUpdate("social"); }
   if (tab === "bookmarks") bookmarkRenderLimit = INITIAL_RENDER_COUNT;
   document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
-  render();
+  render({ preserveScroll: false });
   updateTabBadges();
 }
 
-function render() {
+function getScrollContainer(selector) {
+  return document.querySelector(selector || "#tabContent .article-list, #tabContent .sources-tab, #tabContent .x-list, #tabContent .x-tab");
+}
+
+function render({ preserveScroll = true, scrollSelector } = {}) {
   const el = document.getElementById("tabContent");
+  const container = preserveScroll ? getScrollContainer(scrollSelector) : null;
+  const scrollTop = container ? container.scrollTop : 0;
   if      (activeTab === "feed")      el.innerHTML = renderFeed();
   else if (activeTab === "social")    el.innerHTML = renderSocial();
   else if (activeTab === "bookmarks") el.innerHTML = renderBookmarks();
   else                                 el.innerHTML = renderSources();
   attachEventListeners();
   updateTimerDisplay();
+  if (container) {
+    requestAnimationFrame(() => {
+      const nextContainer = getScrollContainer(scrollSelector);
+      if (nextContainer) nextContainer.scrollTop = scrollTop;
+    });
+  }
 }
 
 /* ── Link preview domain helper ── */
@@ -2552,13 +2571,7 @@ function renderSources() {
    EVENT LISTENERS
 ═══════════════════════════════════════════════════════════════ */
 function renderPreservingScroll(scrollSelector = ".sources-tab") {
-  const container = document.querySelector(scrollSelector);
-  const scrollPos = container ? container.scrollTop : 0;
-  render();
-  requestAnimationFrame(() => {
-    const newContainer = document.querySelector(scrollSelector);
-    if (newContainer) newContainer.scrollTop = scrollPos;
-  });
+  render({ preserveScroll: true, scrollSelector });
 }
 
 function attachEventListeners() {
