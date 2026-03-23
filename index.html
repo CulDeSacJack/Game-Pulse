@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="theme-color" content="#0b0b12"/>
-<title>GAME PULSE</title>
+<title>PULSECAST</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
 <style>
@@ -93,7 +93,7 @@ header{padding:20px 20px 0;flex-shrink:0}
 </head>
 <body>
 <div class="wrap">
-  <header><div class="logo">GAME PULSE</div><div class="tagline">Gaming News · Curated</div></header>
+  <header><div class="logo">PULSECAST</div><div class="tagline">Gaming News · Curated</div></header>
   <div class="nav">
     <button class="nav-btn active" data-nav="news" onclick="showSection('news')">News</button>
     <button class="nav-btn" data-nav="social" onclick="showSection('social')">Social</button>
@@ -167,8 +167,8 @@ const DEAL_WORDS=["deal","deals","sale","discount","free","price drop","price cu
 let articles=[],socialPosts=[],activeSection="news",activeFilter="All",dealsOnly=false,searchQuery="",bookmarks={},newsLoaded=0,socialLoaded=0,isNewsLoading=false,isSocialLoading=false,newsRenderLimit=30,socialRenderLimit=30;
 
 /* ═══ STORAGE ═══ */
-function loadBookmarks(){try{const b=localStorage.getItem("gp2_bookmarks");if(b)bookmarks=JSON.parse(b)}catch{}}
-function saveBookmarks(){try{localStorage.setItem("gp2_bookmarks",JSON.stringify(bookmarks))}catch{}}
+function loadBookmarks(){try{const b=localStorage.getItem("pulsecast_bookmarks");if(b)bookmarks=JSON.parse(b)}catch{}}
+function saveBookmarks(){try{localStorage.setItem("pulsecast_bookmarks",JSON.stringify(bookmarks))}catch{}}
 
 /* ═══ HELPERS ═══ */
 function withTimeout(p,ms){return new Promise((res,rej)=>{const t=setTimeout(()=>rej("timeout"),ms);p.then(v=>{clearTimeout(t);res(v)},e=>{clearTimeout(t);rej(e)})})}
