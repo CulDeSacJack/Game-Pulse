@@ -8,13 +8,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
 <style>
-:root{--bg:#0b0b12;--surface:#13131d;--surface2:#1a1a27;--border:#222235;--text:#e6e6f0;--text2:#8888a0;--green:#00e87b;--cyan:#00c2ff;--red:#ff4757;--gold:#ffc940;--xblue:#1d9bf0}
+:root{--bg:#0b0b12;--surface:#13131d;--surface2:#1a1a27;--border:#222235;--text:#e6e6f0;--text2:#8888a0;--green:#00e87b;--cyan:#00c2ff;--red:#ff4757;--gold:#ffc940;--bsky:#0085ff}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif}
-a{color:inherit;text-decoration:none}
-img{display:block}
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+a{color:inherit;text-decoration:none}img{display:block}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
@@ -35,18 +33,22 @@ header{padding:20px 20px 0;flex-shrink:0}
 .pills::-webkit-scrollbar{display:none}
 .pill{flex-shrink:0;padding:6px 14px;border-radius:99px;font-size:11px;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap}
 .pill.on{background:var(--green);border-color:var(--green);color:#080810}
+.pill.deal{border-color:var(--gold);color:var(--gold)}
+.pill.deal.on{background:var(--gold);color:#080810}
 .content{flex:1;overflow-y:auto;padding:0 20px 40px}
 .section{display:none}.section.visible{display:block}
 .status{display:flex;align-items:center;gap:6px;padding:4px 0 12px}
 .status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1s infinite}
 .status-text{font-size:11px;color:var(--text2);font-weight:500}
+/* News card */
 .card{display:flex;gap:12px;background:var(--surface);border-radius:12px;padding:14px;margin-bottom:8px;border:1px solid var(--border);transition:background .15s;cursor:pointer;animation:fadeIn .3s ease both}
 .card:hover{background:var(--surface2)}
 .card-body{flex:1;min-width:0}
 .card-meta{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
-.card-src{font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.04em}
+.card-src{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 .card-time{font-size:11px;color:var(--text2)}
-.badge-new{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:var(--red);color:#fff;letter-spacing:.04em}
+.badge-brk{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:var(--red);color:#fff;letter-spacing:.04em}
+.badge-deal{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:var(--gold);color:#080810;letter-spacing:.04em}
 .card-title{font-size:14px;font-weight:500;line-height:1.45;color:var(--text)}
 .card:hover .card-title{color:#fff}
 .card-thumb{width:68px;height:68px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--surface2)}
@@ -54,23 +56,34 @@ header{padding:20px 20px 0;flex-shrink:0}
 .save-btn{background:none;border:none;cursor:pointer;color:var(--text2);font-size:11px;font-family:'Outfit',sans-serif;font-weight:600;display:flex;align-items:center;gap:4px;padding:0;transition:color .15s}
 .save-btn:hover,.save-btn.on{color:var(--green)}
 .skel{background:linear-gradient(90deg,var(--surface) 25%,var(--surface2) 50%,var(--surface) 75%);background-size:200% 100%;animation:shimmer 1.6s infinite;border-radius:8px}
-.x-cat-head{display:flex;align-items:center;gap:8px;padding:10px 0 8px;cursor:pointer;user-select:none}
-.x-cat-label{font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.1em;text-transform:uppercase}
-.x-cat-count{font-size:10px;color:var(--text2);background:var(--surface2);padding:2px 8px;border-radius:99px}
-.x-cat-chevron{margin-left:auto;color:var(--text2);font-size:14px;transition:transform .2s}
-.x-cat-head.open .x-cat-chevron{transform:rotate(90deg)}
-.x-cat-list{display:none}.x-cat-list.open{display:block}
-.x-account{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;transition:background .15s}
-.x-account:hover{background:var(--surface2)}
-.x-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#1d9bf022,#1d9bf011);border:1px solid #1d9bf033;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--xblue);font-weight:700;font-size:14px}
-.x-info{flex:1;min-width:0}
-.x-name{font-size:13px;font-weight:600;color:var(--text)}
-.x-handle{font-size:11px;color:var(--xblue);font-family:'JetBrains Mono',monospace}
+/* Top Stories */
+.top-stories{margin-bottom:20px}
+.ts-label{font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.12em;text-transform:uppercase;padding:4px 0 10px;display:flex;align-items:center;gap:6px}
+.ts-card{background:linear-gradient(135deg,var(--surface),var(--surface2));border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:background .15s;animation:fadeIn .3s ease both}
+.ts-card:hover{background:var(--surface2)}
+.ts-title{font-size:15px;font-weight:600;line-height:1.4;color:#fff;margin-bottom:8px}
+.ts-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ts-src{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.ts-count{font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;background:var(--green);color:#080810}
+/* Bluesky card */
+.bsky-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;transition:background .15s;animation:fadeIn .3s ease both}
+.bsky-card:hover{background:var(--surface2)}
+.bsky-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.bsky-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#0085ff22,#0085ff11);border:1px solid #0085ff33;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--bsky);flex-shrink:0}
+.bsky-name{font-size:12px;font-weight:600;color:var(--text)}
+.bsky-handle{font-size:10px;color:var(--bsky);font-family:'JetBrains Mono',monospace}
+.bsky-time{font-size:10px;color:var(--text2);margin-left:auto}
+.bsky-text{font-size:13px;line-height:1.5;color:var(--text);word-break:break-word}
+.bsky-link{display:block;margin-top:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg)}
+.bsky-link-title{font-size:12px;font-weight:600;color:var(--text);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.bsky-link-domain{font-size:10px;color:var(--text2);margin-top:3px}
+/* Misc */
 .empty{text-align:center;padding:60px 20px;color:var(--text2)}
 .empty-icon{font-size:40px;margin-bottom:12px}
 .empty-title{font-size:15px;font-weight:600;margin-bottom:4px}
 .load-more{display:block;width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:12px;font-weight:600;font-family:'Outfit',sans-serif;cursor:pointer;text-align:center;margin-top:8px;transition:all .15s}
 .load-more:hover{border-color:var(--green);color:var(--green)}
+.divider{font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.12em;text-transform:uppercase;padding:16px 0 10px;border-top:1px solid var(--border);margin-top:4px}
 @media(max-width:400px){
   header{padding:16px 16px 0}.nav{padding:12px 16px 0}.search-wrap{padding:10px 16px}
   .pills{padding:0 16px 10px}.content{padding:0 16px 40px}.logo{font-size:24px}
@@ -80,22 +93,17 @@ header{padding:20px 20px 0;flex-shrink:0}
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <div class="logo">GAME PULSE</div>
-    <div class="tagline">Gaming News Feed</div>
-  </header>
+  <header><div class="logo">GAME PULSE</div><div class="tagline">Gaming News · Curated</div></header>
   <div class="nav">
     <button class="nav-btn active" data-nav="news" onclick="showSection('news')">News</button>
-    <button class="nav-btn" data-nav="social" onclick="showSection('social')">X Posts</button>
+    <button class="nav-btn" data-nav="social" onclick="showSection('social')">Social</button>
     <button class="nav-btn" data-nav="saved" onclick="showSection('saved')">Saved</button>
   </div>
-  <div class="search-wrap">
-    <div class="search">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8888a0" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input id="searchInput" type="text" placeholder="Search..."/>
-      <button class="search-clear" id="clearSearch">×</button>
-    </div>
-  </div>
+  <div class="search-wrap"><div class="search">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8888a0" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="searchInput" type="text" placeholder="Search..."/>
+    <button class="search-clear" id="clearSearch">×</button>
+  </div></div>
   <div id="pillsWrap" class="pills"></div>
   <div class="content" id="content">
     <div class="section visible" id="sec-news"></div>
@@ -103,8 +111,8 @@ header{padding:20px 20px 0;flex-shrink:0}
     <div class="section" id="sec-saved"></div>
   </div>
 </div>
-<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 <script>
+/* ═══ SOURCES ═══ */
 const NEWS_SOURCES=[
   {id:"ign",name:"IGN",color:"#ff4500",rss:"https://feeds.feedburner.com/ign/all"},
   {id:"gspot",name:"GameSpot",color:"#00c853",rss:"https://www.gamespot.com/feeds/news/"},
@@ -120,180 +128,189 @@ const NEWS_SOURCES=[
   {id:"pushsq",name:"Push Square",color:"#2f7bff",rss:"https://www.pushsquare.com/feeds/latest"},
   {id:"ninlife",name:"Nintendo Life",color:"#e04040",rss:"https://www.nintendolife.com/feeds/latest"},
 ];
-const X_ACCOUNTS={
-  "Journalists & Personalities":[
-    {name:"Geoff Keighley",handle:"geoffkeighley"},
-    {name:"Shinobi602",handle:"shinobi602"},
-    {name:"Stealth40k",handle:"stealth40k"},
-    {name:"Aaron Keller",handle:"aaronkellerOW"},
-    {name:"Hazzadorgamin",handle:"hazzadorGamin"},
-    {name:"Knoebel",handle:"Knoebelbroet"},
-    {name:"Okami",handle:"okami13_"},
-  ],
-  "News Outlets":[
-    {name:"GameSpot",handle:"GameSpot"},
-    {name:"GamesRadar",handle:"gamesradar"},
-    {name:"CharlieIntel",handle:"charlieINTEL"},
-    {name:"VGC",handle:"vgc_news"},
-    {name:"Gematsu",handle:"gematsu"},
-    {name:"GamesIndustry.biz",handle:"gibiz"},
-    {name:"Nintendo Life",handle:"nintendolife"},
-    {name:"PushSquare",handle:"pushsquare"},
-    {name:"IGN Finds",handle:"IGNDeals"},
-    {name:"The Game Awards",handle:"thegameawards"},
-  ],
-  "Platforms & Stores":[
-    {name:"Xbox",handle:"Xbox"},
-    {name:"PlayStation",handle:"Playstation"},
-    {name:"Steam",handle:"steam"},
-    {name:"Steam Deck",handle:"OnDeck"},
-    {name:"SteamDB",handle:"steamdb"},
-    {name:"SteamDeckHQ",handle:"steamdeckhq"},
-    {name:"Game Pass",handle:"XboxGamePass"},
-    {name:"Xbox Game Studios",handle:"XboxPublishing"},
-    {name:"ID@Xbox",handle:"ID_Xbox"},
-    {name:"Epic Games",handle:"EpicGames"},
-  ],
-  "Publishers":[
-    {name:"EA",handle:"EA"},
-    {name:"Ubisoft",handle:"ubisoft"},
-    {name:"Sega",handle:"sega"},
-    {name:"Konami",handle:"konami"},
-    {name:"Bandai Namco",handle:"bandainamcous"},
-    {name:"Square Enix",handle:"SquareEnix"},
-    {name:"THQ Nordic",handle:"THQNordic"},
-    {name:"2K",handle:"2K"},
-    {name:"WB Games",handle:"WBgames"},
-    {name:"Devolver Digital",handle:"devolverdigital"},
-    {name:"Annapurna",handle:"A_i"},
-    {name:"Team17",handle:"Team17"},
-    {name:"Focus Entertainment",handle:"focus_entmt"},
-    {name:"Funcom",handle:"funcom"},
-    {name:"Capcom USA",handle:"CapcomUSA_"},
-  ],
-  "Studios":[
-    {name:"Rockstar Games",handle:"rockstargames"},
-    {name:"Insomniac",handle:"insomniacgames"},
-    {name:"Naughty Dog",handle:"naughty_Dog"},
-    {name:"Obsidian",handle:"obsidian"},
-    {name:"Bungie",handle:"bungie"},
-    {name:"Larian Studios",handle:"larianstudios"},
-    {name:"Housemarque",handle:"housemarque"},
-    {name:"Remedy",handle:"remedygames"},
-    {name:"Sucker Punch",handle:"suckerpunchprod"},
-    {name:"Santa Monica Studio",handle:"SonySantaMonica"},
-    {name:"Playground Games",handle:"WeArePlayground"},
-    {name:"Rare",handle:"rareltd"},
-    {name:"IO Interactive",handle:"IOInteractive"},
-    {name:"Arrowhead",handle:"AreowheadGS"},
-    {name:"Supergiant Games",handle:"supergiantgames"},
-    {name:"DICE",handle:"EA_Dice"},
-    {name:"Kojima Productions",handle:"kojipro2015_EN"},
-    {name:"Bend Studio",handle:"bendstudio"},
-    {name:"Team Ninja",handle:"TeamNinjaStudio"},
-    {name:"Bethesda Studios",handle:"bethesdagamestudios"},
-    {name:"Bethesda",handle:"bethesda"},
-    {name:"RGG Studio",handle:"rggstudio"},
-    {name:"Motion Twin",handle:"motiontwin"},
-    {name:"Afterburner Studios",handle:"afterburnerDevs"},
-    {name:"Digital Foundry",handle:"digitalfoundry"},
-    {name:"Acclaim",handle:"playacclaim"},
-  ],
-  "Game Accounts":[
-    {name:"Overwatch",handle:"playoverwatch"},
-    {name:"OW Cavalry",handle:"OWCavalry"},
-    {name:"Marvel Rivals",handle:"marvelrivals"},
-    {name:"Rivals Assembled",handle:"RivalsAssembled"},
-    {name:"Halo",handle:"halo"},
-    {name:"Forza Motorsport",handle:"forzamotorsport"},
-    {name:"Assassin's Creed",handle:"assassinscreed"},
-    {name:"Street Fighter",handle:"Streetfighter"},
-    {name:"Mega Man",handle:"megaman"},
-    {name:"Fortnite",handle:"fortnite"},
-    {name:"Warframe",handle:"playwarframe"},
-    {name:"Kingdom Hearts",handle:"Kingdomhearts"},
-    {name:"Final Fantasy",handle:"finalfantasy"},
-    {name:"Elder Scrolls",handle:"ElderScrolls"},
-    {name:"Pokemon",handle:"pokemon"},
-    {name:"Battlefield",handle:"battlefield"},
-    {name:"EA Star Wars",handle:"EAStarWars"},
-    {name:"Lucasfilm Games",handle:"lucasfilmgames"},
-    {name:"Marvel Games",handle:"marvelgames"},
-  ],
-};
-let articles=[],activeSection="news",activeFilter="All",searchQuery="",bookmarks={},loadedCount=0,isLoading=false,openCategories={},renderLimit=30;
+const BSKY_SOURCES=[
+  {id:"bsky-wario64",name:"Wario64",color:"#0085ff",handle:"wario64.bsky.social"},
+  {id:"bsky-cag",name:"CheapAssGamer",color:"#ffd54a",handle:"cheapassgamer.com"},
+  {id:"bsky-schreier",name:"Jason Schreier",color:"#0085ff",handle:"jasonschreier.bsky.social"},
+  {id:"bsky-tomw",name:"Tom Warren",color:"#0085ff",handle:"tomwarren.co.uk"},
+  {id:"bsky-geoff",name:"Geoff Keighley",color:"#0085ff",handle:"geoffkeighley.bsky.social"},
+  {id:"bsky-shinobi",name:"Shinobi",color:"#7b68ee",handle:"shinobi602.bsky.social"},
+  {id:"bsky-stealth",name:"Stealth40k",color:"#4fc3f7",handle:"stealth40k.bsky.social"},
+  {id:"bsky-knoebel",name:"Knoebel",color:"#0085ff",handle:"knoebel.bsky.social"},
+  {id:"bsky-matp",name:"Mat Piscatella",color:"#0085ff",handle:"matpiscatella.bsky.social"},
+  {id:"bsky-df",name:"Digital Foundry",color:"#00acc1",handle:"digitalfoundry.bsky.social"},
+  {id:"bsky-polygon",name:"Polygon",color:"#ff6900",handle:"polygon.com"},
+  {id:"bsky-ign",name:"IGN",color:"#bf1313",handle:"ign.com"},
+  {id:"bsky-euro",name:"Eurogamer",color:"#e63946",handle:"eurogamer.bsky.social"},
+  {id:"bsky-gematsu",name:"Gematsu",color:"#5cc8ff",handle:"gematsu.com"},
+  {id:"bsky-xbox",name:"Xbox",color:"#107c10",handle:"xbox.com"},
+  {id:"bsky-gamepass",name:"Game Pass",color:"#3ddc84",handle:"gamepass.xbox.com"},
+  {id:"bsky-ps",name:"PlayStation",color:"#2f7bff",handle:"playstation.com"},
+  {id:"bsky-steam",name:"Steam",color:"#66c0f4",handle:"steampowered.com"},
+  {id:"bsky-nlife",name:"Nintendo Life",color:"#ff3d00",handle:"nintendolife.com"},
+  {id:"bsky-vgc",name:"VGC",color:"#ab47bc",handle:"videogameschronicle.com"},
+  {id:"bsky-owc",name:"OW Calvary",color:"#00bcd4",handle:"owcavalry.com"},
+  {id:"bsky-gibiz",name:"GamesIndustry",color:"#26a69a",handle:"gibiz.bsky.social"},
+  {id:"bsky-hazz",name:"Hazzadorgamin",color:"#8bc34a",handle:"hazzadorgamin.bsky.social"},
+  {id:"bsky-capcom",name:"Capcom USA",color:"#f44336",handle:"capcomusa.com"},
+  {id:"bsky-remedy",name:"Remedy",color:"#9c27b0",handle:"remedygames.com"},
+  {id:"bsky-devolver",name:"Devolver",color:"#ff1744",handle:"devolverdigital.com"},
+  {id:"bsky-super",name:"Supergiant",color:"#ffb300",handle:"supergiantgames.bsky.social"},
+  {id:"bsky-rgg",name:"RGG Studio",color:"#ff4d6d",handle:"rggwest.bsky.social"},
+  {id:"bsky-square",name:"Square Enix",color:"#ff5252",handle:"square-enix-games.com"},
+  {id:"bsky-focus",name:"Focus Ent.",color:"#ff9800",handle:"focus-entmt.com"},
+  {id:"bsky-sucker",name:"Sucker Punch",color:"#ff7043",handle:"suckerpunchprod.bsky.social"},
+];
+const DEAL_WORDS=["deal","deals","sale","discount","free","price drop","price cut","lowest price","clearance","save","savings","% off","$","cheapest","under $","giveaway","offer","bundle","flash sale","price match"];
 
+/* ═══ STATE ═══ */
+let articles=[],socialPosts=[],activeSection="news",activeFilter="All",dealsOnly=false,searchQuery="",bookmarks={},newsLoaded=0,socialLoaded=0,isNewsLoading=false,isSocialLoading=false,newsRenderLimit=30,socialRenderLimit=30;
+
+/* ═══ STORAGE ═══ */
 function loadBookmarks(){try{const b=localStorage.getItem("gp2_bookmarks");if(b)bookmarks=JSON.parse(b)}catch{}}
 function saveBookmarks(){try{localStorage.setItem("gp2_bookmarks",JSON.stringify(bookmarks))}catch{}}
 
+/* ═══ HELPERS ═══ */
 function withTimeout(p,ms){return new Promise((res,rej)=>{const t=setTimeout(()=>rej("timeout"),ms);p.then(v=>{clearTimeout(t);res(v)},e=>{clearTimeout(t);rej(e)})})}
-
-async function tryRss2Json(src){
-  try{const r=await withTimeout(fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(src.rss)}`),10000);if(!r.ok)return null;const d=await r.json();if(d.status!=="ok"||!d.items?.length)return null;return d.items.map(i=>({id:i.link||i.guid||Math.random().toString(),title:(i.title||"").trim(),link:i.link||"",thumb:i.thumbnail||i.enclosure?.link||"",date:i.pubDate?new Date(i.pubDate):new Date(0),source:src.name,sourceId:src.id,color:src.color})).filter(a=>a.title&&a.link)}catch{return null}
-}
-
-async function tryProxy(src){
-  const proxies=[
-    {url:u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,parse:async r=>(await r.json()).contents},
-    {url:u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,parse:r=>r.text()},
-  ];
-  for(const p of proxies){
-    try{const r=await withTimeout(fetch(p.url(src.rss)),10000);if(!r.ok)continue;const xml=await p.parse(r);if(!xml||typeof xml!=="string")continue;const doc=new DOMParser().parseFromString(xml,"application/xml");if(doc.querySelector("parsererror"))continue;const items=[...doc.querySelectorAll("item,entry")];if(!items.length)continue;return items.map(el=>{const title=(el.querySelector("title")?.textContent||"").trim();const linkEl=el.querySelector("link");let link=linkEl?.getAttribute("href")||linkEl?.textContent?.trim()||el.querySelector("guid")?.textContent?.trim()||"";const rawDate=el.querySelector("pubDate")?.textContent||el.querySelector("published")?.textContent||el.querySelector("updated")?.textContent||"";let thumb="";const desc=el.querySelector("description")?.textContent||"";const m=desc.match(/<img[^>]+src=["']([^"']+)/i);if(m)thumb=m[1];return{id:link||Math.random().toString(),title,link,thumb,date:rawDate?new Date(rawDate):new Date(0),source:src.name,sourceId:src.id,color:src.color}}).filter(a=>a.title&&a.link)}catch{continue}
-  }
-  return null;
-}
-
-async function fetchAllFeeds(){
-  isLoading=true;loadedCount=0;renderNews();
-  const fresh=[];
-  await Promise.allSettled(NEWS_SOURCES.map(async src=>{
-    const items=await tryRss2Json(src)||await tryProxy(src);
-    if(items)fresh.push(...items);loadedCount++;renderNews();
-  }));
-  const seen=new Set();
-  articles=fresh.filter(a=>{if(seen.has(a.id))return false;seen.add(a.id);return true}).sort((a,b)=>b.date-a.date);
-  isLoading=false;renderNews();
-}
-
 function timeAgo(d){if(!d||isNaN(d.getTime())||d.getTime()===0)return"";const diff=Date.now()-d.getTime(),m=Math.floor(diff/60000);if(m<1)return"just now";if(m<60)return m+"m ago";const h=Math.floor(m/60);if(h<24)return h+"h ago";return Math.floor(h/24)+"d ago"}
 function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
+function isDeal(title){const t=title.toLowerCase();return DEAL_WORDS.some(w=>t.includes(w))}
+function extractDomain(url){try{return new URL(url).hostname.replace("www.","")}catch{return""}}
 
+/* ═══ TOP STORIES ═══ */
+const STOP_WORDS=new Set(["the","a","an","and","or","but","in","on","at","to","for","of","with","is","are","was","were","be","been","has","have","had","do","does","did","will","would","could","should","can","may","not","no","its","it","this","that","from","by","as","up","out","if","about","than","into","over","after","new","how","all","just","one","get","got","also","more","very","what","when","who","why","where","which","their","they","them","your","you","our","we","my","me","he","she","his","her","game","games","gaming"]);
+function extractKeywords(title){return title.toLowerCase().replace(/[^a-z0-9\s]/g,"").split(/\s+/).filter(w=>w.length>2&&!STOP_WORDS.has(w))}
+function getTopStories(){
+  const cutoff=Date.now()-12*60*60*1000;
+  const recent=articles.filter(a=>a.date&&a.date.getTime()>=cutoff);
+  if(recent.length<4)return[];
+  const clusters=[];
+  const used=new Set();
+  recent.forEach((a,i)=>{
+    if(used.has(i))return;
+    const kw=extractKeywords(a.title);
+    if(kw.length<2)return;
+    const group=[{article:a,idx:i}];
+    recent.forEach((b,j)=>{
+      if(i===j||used.has(j))return;
+      const bkw=extractKeywords(b.title);
+      const shared=kw.filter(w=>bkw.includes(w));
+      if(shared.length>=2&&a.source!==b.source)group.push({article:b,idx:j});
+    });
+    const sources=new Set(group.map(g=>g.article.source));
+    if(sources.size>=3){
+      group.forEach(g=>used.add(g.idx));
+      clusters.push({rep:group[0].article,count:sources.size,sources:[...sources]});
+    }
+  });
+  return clusters.sort((a,b)=>b.count-a.count).slice(0,3);
+}
+
+/* ═══ RSS FETCHING ═══ */
+async function tryRss2Json(src){
+  try{const r=await withTimeout(fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(src.rss)}`),10000);if(!r.ok)return null;const d=await r.json();if(d.status!=="ok"||!d.items?.length)return null;return d.items.map(i=>({id:i.link||i.guid||Math.random().toString(),title:(i.title||"").trim(),link:i.link||"",thumb:i.thumbnail||i.enclosure?.link||"",date:i.pubDate?new Date(i.pubDate):new Date(0),source:src.name,sourceId:src.id,color:src.color,type:"news"})).filter(a=>a.title&&a.link)}catch{return null}
+}
+async function tryProxy(src){
+  const proxies=[{url:u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,parse:async r=>(await r.json()).contents},{url:u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,parse:r=>r.text()}];
+  for(const p of proxies){
+    try{const r=await withTimeout(fetch(p.url(src.rss)),10000);if(!r.ok)continue;const xml=await p.parse(r);if(!xml||typeof xml!=="string")continue;const doc=new DOMParser().parseFromString(xml,"application/xml");if(doc.querySelector("parsererror"))continue;const items=[...doc.querySelectorAll("item,entry")];if(!items.length)continue;return items.map(el=>{const title=(el.querySelector("title")?.textContent||"").trim();const linkEl=el.querySelector("link");let link=linkEl?.getAttribute("href")||linkEl?.textContent?.trim()||"";const rawDate=el.querySelector("pubDate")?.textContent||el.querySelector("published")?.textContent||el.querySelector("updated")?.textContent||"";let thumb="";const desc=el.querySelector("description")?.textContent||"";const m=desc.match(/<img[^>]+src=["']([^"']+)/i);if(m)thumb=m[1];return{id:link||Math.random().toString(),title,link,thumb,date:rawDate?new Date(rawDate):new Date(0),source:src.name,sourceId:src.id,color:src.color,type:"news"}}).filter(a=>a.title&&a.link)}catch{continue}
+  }return null;
+}
+async function fetchNews(){
+  isNewsLoading=true;newsLoaded=0;renderNews();
+  const fresh=[];
+  await Promise.allSettled(NEWS_SOURCES.map(async src=>{const items=await tryRss2Json(src)||await tryProxy(src);if(items)fresh.push(...items);newsLoaded++;renderNews()}));
+  const seen=new Set();articles=fresh.filter(a=>{if(seen.has(a.id))return false;seen.add(a.id);return true}).sort((a,b)=>b.date-a.date);
+  isNewsLoading=false;renderNews();
+}
+
+/* ═══ BLUESKY FETCHING ═══ */
+async function fetchBlueskyAccount(src){
+  try{
+    const r=await withTimeout(fetch(`https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${src.handle}&limit=20&filter=posts_no_replies`),10000);
+    if(!r.ok)return null;const d=await r.json();if(!d.feed?.length)return null;
+    return d.feed.map(entry=>{
+      const post=entry.post||{},rec=post.record||{};
+      const text=(typeof rec.text==="string"?rec.text:"").trim();
+      const createdAt=rec.createdAt||post.indexedAt||"";
+      const uri=typeof post.uri==="string"?post.uri:"";
+      const postId=uri.split("/").pop()||"";
+      const authorHandle=post.author?.handle||src.handle;
+      const link=postId?`https://bsky.app/profile/${authorHandle}/post/${postId}`:`https://bsky.app/profile/${src.handle}`;
+      const embed=post.embed||{};
+      const ext=embed.external||null;
+      return{id:uri||link,title:text,link,date:createdAt?new Date(createdAt):new Date(0),source:src.name,sourceId:src.id,color:src.color,handle:authorHandle,type:"social",extTitle:ext?.title||"",extUrl:ext?.uri||"",extThumb:ext?.thumb||""};
+    }).filter(i=>i.title);
+  }catch{return null}
+}
+async function fetchSocial(){
+  isSocialLoading=true;socialLoaded=0;renderSocial();
+  const fresh=[];
+  await Promise.allSettled(BSKY_SOURCES.map(async src=>{const items=await fetchBlueskyAccount(src);if(items)fresh.push(...items);socialLoaded++;renderSocial()}));
+  const seen=new Set();socialPosts=fresh.filter(a=>{if(seen.has(a.id))return false;seen.add(a.id);return true}).sort((a,b)=>b.date-a.date);
+  isSocialLoading=false;renderSocial();
+}
+
+/* ═══ RENDER — PILLS ═══ */
 function renderPills(){
   const w=document.getElementById("pillsWrap");
-  if(activeSection!=="news"){w.style.display="none";return}
+  if(activeSection==="saved"){w.style.display="none";return}
   w.style.display="flex";
-  w.innerHTML=["All",...NEWS_SOURCES.map(s=>s.name)].map(n=>`<button class="pill${activeFilter===n?" on":""}" onclick="setFilter('${esc(n)}')">${esc(n)}</button>`).join("");
+  if(activeSection==="news"){
+    const dealCount=articles.filter(a=>isDeal(a.title)).length;
+    w.innerHTML=["All",...NEWS_SOURCES.map(s=>s.name)].map(n=>`<button class="pill${activeFilter===n?" on":""}" onclick="setFilter('${esc(n)}')">${esc(n)}</button>`).join("")+
+      (dealCount?`<button class="pill deal${dealsOnly?" on":""}" onclick="toggleDeals()">🔥 DEALS (${dealCount})</button>`:"");
+  } else {
+    w.innerHTML=["All",...BSKY_SOURCES.map(s=>s.name)].map(n=>`<button class="pill${activeFilter===n?" on":""}" onclick="setFilter('${esc(n)}')">${esc(n)}</button>`).join("");
+  }
 }
 
+/* ═══ RENDER — NEWS ═══ */
 function renderNews(){
   const el=document.getElementById("sec-news"),q=searchQuery.toLowerCase();
-  const filtered=articles.filter(a=>activeFilter==="All"||a.source===activeFilter).filter(a=>!q||a.title.toLowerCase().includes(q)||a.source.toLowerCase().includes(q));
-  if(isLoading&&articles.length===0){el.innerHTML=`<div class="status"><span class="status-dot"></span><span class="status-text">Loading ${loadedCount}/${NEWS_SOURCES.length} sources…</span></div>`+Array(5).fill(0).map(()=>`<div style="background:var(--surface);border-radius:12px;padding:14px;margin-bottom:8px;border:1px solid var(--border)"><div class="skel" style="height:12px;width:60px;margin-bottom:10px"></div><div class="skel" style="height:16px;width:95%;margin-bottom:6px"></div><div class="skel" style="height:16px;width:70%"></div></div>`).join("");return}
+  const filtered=articles.filter(a=>activeFilter==="All"||a.source===activeFilter).filter(a=>!dealsOnly||isDeal(a.title)).filter(a=>!q||a.title.toLowerCase().includes(q)||a.source.toLowerCase().includes(q));
+  if(isNewsLoading&&articles.length===0){el.innerHTML=`<div class="status"><span class="status-dot"></span><span class="status-text">Loading ${newsLoaded}/${NEWS_SOURCES.length} sources…</span></div>`+Array(5).fill(0).map(()=>`<div style="background:var(--surface);border-radius:12px;padding:14px;margin-bottom:8px;border:1px solid var(--border)"><div class="skel" style="height:12px;width:60px;margin-bottom:10px"></div><div class="skel" style="height:16px;width:95%;margin-bottom:6px"></div><div class="skel" style="height:16px;width:70%"></div></div>`).join("");return}
   if(!filtered.length){el.innerHTML=`<div class="empty"><div class="empty-icon">📡</div><div class="empty-title">${q?"No results":"No articles loaded"}</div></div>`;return}
-  const vis=filtered.slice(0,renderLimit);
-  let html=isLoading?`<div class="status"><span class="status-dot"></span><span class="status-text">Loading ${loadedCount}/${NEWS_SOURCES.length}…</span></div>`:"";
-  vis.forEach((a,i)=>{const ago=timeAgo(a.date);const saved=!!bookmarks[a.id];const isNew=a.date&&(Date.now()-a.date.getTime())<3600000;const thumbHtml=a.thumb?`<img class="card-thumb" src="${esc(a.thumb)}" alt="" loading="lazy" onerror="this.style.display='none'"/>`:"";
-    html+=`<a href="${esc(a.link)}" target="_blank" rel="noopener noreferrer" style="display:block"><div class="card" style="animation-delay:${Math.min(i*30,400)}ms"><div class="card-body"><div class="card-meta"><span class="card-src" style="color:${a.color}">${esc(a.source)}</span>${ago?`<span class="card-time">· ${ago}</span>`:""}${isNew?`<span class="badge-new">BREAKING</span>`:""}</div><div class="card-title">${esc(a.title)}</div><div class="card-actions"><button class="save-btn${saved?" on":""}" onclick="event.preventDefault();event.stopPropagation();toggleSave('${esc(a.id)}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="${saved?"currentColor":"none"}" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>${saved?"SAVED":"SAVE"}</button></div></div>${thumbHtml}</div></a>`});
-  if(filtered.length>renderLimit)html+=`<button class="load-more" onclick="renderLimit+=30;renderNews()">Show more (${filtered.length-renderLimit} remaining)</button>`;
+  let html=isNewsLoading?`<div class="status"><span class="status-dot"></span><span class="status-text">Loading ${newsLoaded}/${NEWS_SOURCES.length}…</span></div>`:"";
+  // Top Stories
+  if(activeFilter==="All"&&!dealsOnly&&!q){
+    const clusters=getTopStories();
+    if(clusters.length){
+      html+=`<div class="top-stories"><div class="ts-label">📈 Top Stories</div>`;
+      clusters.forEach((c,i)=>{html+=`<a href="${esc(c.rep.link)}" target="_blank" rel="noopener noreferrer" style="display:block"><div class="ts-card" style="animation-delay:${i*60}ms"><div class="ts-title">${esc(c.rep.title)}</div><div class="ts-meta"><span class="ts-src" style="color:${c.rep.color}">${esc(c.rep.source)}</span><span class="card-time">· ${timeAgo(c.rep.date)}</span><span class="ts-count">+${c.count} sources</span></div></div></a>`});
+      html+=`</div><div class="divider">All Headlines</div>`;
+    }
+  }
+  const vis=filtered.slice(0,newsRenderLimit);
+  vis.forEach((a,i)=>{const ago=timeAgo(a.date);const saved=!!bookmarks[a.id];const isBreaking=a.date&&(Date.now()-a.date.getTime())<3600000;const deal=isDeal(a.title);const thumbHtml=a.thumb?`<img class="card-thumb" src="${esc(a.thumb)}" alt="" loading="lazy" onerror="this.style.display='none'"/>`:"";
+    html+=`<a href="${esc(a.link)}" target="_blank" rel="noopener noreferrer" style="display:block"><div class="card" style="animation-delay:${Math.min(i*25,300)}ms"><div class="card-body"><div class="card-meta"><span class="card-src" style="color:${a.color}">${esc(a.source)}</span>${ago?`<span class="card-time">· ${ago}</span>`:""}${isBreaking?`<span class="badge-brk">BREAKING</span>`:""}${deal?`<span class="badge-deal">DEAL</span>`:""}</div><div class="card-title">${esc(a.title)}</div><div class="card-actions"><button class="save-btn${saved?" on":""}" onclick="event.preventDefault();event.stopPropagation();toggleSave('${esc(a.id)}','news')"><svg width="14" height="14" viewBox="0 0 24 24" fill="${saved?"currentColor":"none"}" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>${saved?"SAVED":"SAVE"}</button></div></div>${thumbHtml}</div></a>`});
+  if(filtered.length>newsRenderLimit)html+=`<button class="load-more" onclick="newsRenderLimit+=30;renderNews()">Show more (${filtered.length-newsRenderLimit} remaining)</button>`;
   el.innerHTML=html;
 }
 
+/* ═══ RENDER — SOCIAL ═══ */
 function renderSocial(){
-  const el=document.getElementById("sec-social"),q=searchQuery.toLowerCase();let html=`<div style="margin-bottom:16px;border-radius:10px;overflow:hidden;border:1px solid var(--border)"><a class="twitter-timeline" data-theme="dark" data-height="400" href="https://twitter.com/Wario64?ref_src=twsrc%5Etfw">Tweets by Wario64</a></div>`;
-  Object.entries(X_ACCOUNTS).forEach(([cat,accounts])=>{
-    const f=accounts.filter(a=>!q||a.name.toLowerCase().includes(q)||a.handle.toLowerCase().includes(q));if(!f.length)return;
-    const isOpen=openCategories[cat]!==false;
-    html+=`<div><div class="x-cat-head${isOpen?" open":""}" onclick="toggleCat('${esc(cat)}')"><span class="x-cat-label">${esc(cat)}</span><span class="x-cat-count">${f.length}</span><span class="x-cat-chevron">›</span></div><div class="x-cat-list${isOpen?" open":""}">`;
-    f.forEach(a=>{
-      html+=`<a href="https://x.com/${esc(a.handle)}" target="_blank" rel="noopener noreferrer" style="display:block"><div class="x-account"><div class="x-avatar">${a.name[0]}</div><div class="x-info"><div class="x-name">${esc(a.name)}</div><div class="x-handle">@${esc(a.handle)}</div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8888a0" stroke-width="2" style="flex-shrink:0"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></div></a>`;
-    });
-    html+=`</div></div>`;
+  const el=document.getElementById("sec-social"),q=searchQuery.toLowerCase();
+  const filtered=socialPosts.filter(a=>activeFilter==="All"||a.source===activeFilter).filter(a=>!q||a.title.toLowerCase().includes(q)||a.source.toLowerCase().includes(q)||a.handle.toLowerCase().includes(q));
+  if(isSocialLoading&&socialPosts.length===0){el.innerHTML=`<div class="status"><span class="status-dot"></span><span class="status-text">Loading ${socialLoaded}/${BSKY_SOURCES.length} Bluesky feeds…</span></div>`+Array(4).fill(0).map(()=>`<div style="background:var(--surface);border-radius:12px;padding:14px;margin-bottom:8px;border:1px solid var(--border)"><div class="skel" style="height:10px;width:80px;margin-bottom:10px"></div><div class="skel" style="height:14px;width:100%;margin-bottom:6px"></div><div class="skel" style="height:14px;width:60%"></div></div>`).join("");return}
+  if(!filtered.length){el.innerHTML=`<div class="empty"><div class="empty-icon">🦋</div><div class="empty-title">${q?"No results":"No posts loaded"}</div></div>`;return}
+  let html=isSocialLoading?`<div class="status"><span class="status-dot"></span><span class="status-text">Loading ${socialLoaded}/${BSKY_SOURCES.length}…</span></div>`:"";
+  const vis=filtered.slice(0,socialRenderLimit);
+  vis.forEach((a,i)=>{
+    const saved=!!bookmarks[a.id];const deal=isDeal(a.title);
+    html+=`<div class="bsky-card" style="animation-delay:${Math.min(i*25,300)}ms" onclick="window.open('${esc(a.link)}','_blank')">
+      <div class="bsky-head"><div class="bsky-avatar">${a.source[0]}</div><div><div class="bsky-name">${esc(a.source)}</div><div class="bsky-handle">@${esc(a.handle)}</div></div><span class="bsky-time">${timeAgo(a.date)}</span></div>
+      ${deal?`<span class="badge-deal" style="margin-bottom:6px;display:inline-block">DEAL</span>`:""}
+      <div class="bsky-text">${esc(a.title)}</div>
+      ${a.extTitle?`<div class="bsky-link"><div class="bsky-link-title">${esc(a.extTitle)}</div>${a.extUrl?`<div class="bsky-link-domain">${esc(extractDomain(a.extUrl))}</div>`:""}</div>`:""}
+      <div class="card-actions" style="margin-top:8px"><button class="save-btn${saved?" on":""}" onclick="event.stopPropagation();toggleSave('${esc(a.id)}','social')"><svg width="14" height="14" viewBox="0 0 24 24" fill="${saved?"currentColor":"none"}" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>${saved?"SAVED":"SAVE"}</button></div>
+    </div>`;
   });
-  if(!html)html=`<div class="empty"><div class="empty-icon">🐦</div><div class="empty-title">No accounts match</div></div>`;
+  if(filtered.length>socialRenderLimit)html+=`<button class="load-more" onclick="socialRenderLimit+=30;renderSocial()">Show more (${filtered.length-socialRenderLimit} remaining)</button>`;
   el.innerHTML=html;
-  if(window.twttr?.widgets)twttr.widgets.load(el);
 }
 
+/* ═══ RENDER — SAVED ═══ */
 function renderSaved(){
   const el=document.getElementById("sec-saved"),q=searchQuery.toLowerCase();
   const saved=Object.values(bookmarks).sort((a,b)=>(b.savedAt||0)-(a.savedAt||0)).filter(a=>!q||a.title?.toLowerCase().includes(q)||a.source?.toLowerCase().includes(q));
@@ -301,16 +318,21 @@ function renderSaved(){
   el.innerHTML=`<div style="font-size:11px;color:var(--text2);font-weight:600;letter-spacing:.1em;padding:4px 0 12px">${saved.length} SAVED</div>`+saved.map((a,i)=>`<a href="${esc(a.link)}" target="_blank" rel="noopener noreferrer" style="display:block"><div class="card" style="animation-delay:${Math.min(i*30,300)}ms"><div class="card-body"><div class="card-meta"><span class="card-src" style="color:${a.color||"var(--green)"}">${esc(a.source||"")}</span>${a.date?`<span class="card-time">· ${timeAgo(new Date(a.date))}</span>`:""}</div><div class="card-title">${esc(a.title)}</div><div class="card-actions"><button class="save-btn on" onclick="event.preventDefault();event.stopPropagation();toggleSave('${esc(a.id)}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>REMOVE</button></div></div></div></a>`).join("");
 }
 
-function showSection(n){activeSection=n;searchQuery="";renderLimit=30;document.getElementById("searchInput").value="";document.getElementById("clearSearch").style.display="none";document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.nav===n));document.querySelectorAll(".section").forEach(s=>s.classList.remove("visible"));document.getElementById("sec-"+n).classList.add("visible");renderPills();if(n==="news")renderNews();else if(n==="social")renderSocial();else renderSaved()}
-function setFilter(n){activeFilter=n;renderLimit=30;renderPills();renderNews()}
-function toggleSave(id){if(bookmarks[id])delete bookmarks[id];else{const a=articles.find(x=>x.id===id);if(a)bookmarks[id]={...a,date:a.date?.toISOString?.(),savedAt:Date.now()}}saveBookmarks();if(activeSection==="news")renderNews();else renderSaved()}
-function toggleCat(c){openCategories[c]=openCategories[c]===false?true:false;renderSocial()}
+/* ═══ ACTIONS ═══ */
+function showSection(n){activeSection=n;searchQuery="";activeFilter="All";dealsOnly=false;newsRenderLimit=30;socialRenderLimit=30;document.getElementById("searchInput").value="";document.getElementById("clearSearch").style.display="none";document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.nav===n));document.querySelectorAll(".section").forEach(s=>s.classList.remove("visible"));document.getElementById("sec-"+n).classList.add("visible");renderPills();if(n==="news")renderNews();else if(n==="social"){renderSocial();if(!socialPosts.length&&!isSocialLoading)fetchSocial()}else renderSaved()}
+function setFilter(n){activeFilter=n;newsRenderLimit=30;socialRenderLimit=30;renderPills();if(activeSection==="news")renderNews();else renderSocial()}
+function toggleDeals(){dealsOnly=!dealsOnly;newsRenderLimit=30;renderPills();renderNews()}
+function toggleSave(id,type){
+  if(bookmarks[id])delete bookmarks[id];
+  else{const pool=type==="social"?socialPosts:articles;const a=pool.find(x=>x.id===id);if(a)bookmarks[id]={...a,date:a.date?.toISOString?.(),savedAt:Date.now()}}
+  saveBookmarks();if(activeSection==="news")renderNews();else if(activeSection==="social")renderSocial();else renderSaved();
+}
+document.getElementById("searchInput").addEventListener("input",e=>{searchQuery=e.target.value;document.getElementById("clearSearch").style.display=searchQuery?"block":"none";newsRenderLimit=30;socialRenderLimit=30;if(activeSection==="news")renderNews();else if(activeSection==="social")renderSocial();else renderSaved()});
+document.getElementById("clearSearch").addEventListener("click",()=>{searchQuery="";document.getElementById("searchInput").value="";document.getElementById("clearSearch").style.display="none";newsRenderLimit=30;socialRenderLimit=30;if(activeSection==="news")renderNews();else if(activeSection==="social")renderSocial();else renderSaved()});
 
-document.getElementById("searchInput").addEventListener("input",e=>{searchQuery=e.target.value;document.getElementById("clearSearch").style.display=searchQuery?"block":"none";renderLimit=30;if(activeSection==="news")renderNews();else if(activeSection==="social")renderSocial();else renderSaved()});
-document.getElementById("clearSearch").addEventListener("click",()=>{searchQuery="";document.getElementById("searchInput").value="";document.getElementById("clearSearch").style.display="none";renderLimit=30;if(activeSection==="news")renderNews();else if(activeSection==="social")renderSocial();else renderSaved()});
-
-loadBookmarks();renderPills();fetchAllFeeds();
-setInterval(()=>fetchAllFeeds(),10*60*1000);
+/* ═══ INIT ═══ */
+loadBookmarks();renderPills();fetchNews();
+setInterval(()=>{fetchNews();if(socialPosts.length)fetchSocial()},10*60*1000);
 </script>
 </body>
 </html>
