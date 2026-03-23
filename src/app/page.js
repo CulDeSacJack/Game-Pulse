@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 /* ═══════════════════════════════════════════
    DEAL DETECTION
@@ -56,15 +56,11 @@ function getTopStories(articles) {
 ═══════════════════════════════════════════ */
 function parseDate(str) {
   if (!str) return new Date(0);
-  // Already a Date object
   if (str instanceof Date) return isNaN(str.getTime()) ? new Date(0) : str;
-  // Try direct parse first
   let d = new Date(str);
   if (!isNaN(d.getTime())) return d;
-  // rss2json returns "2026-03-23 14:00:00" — add T and Z
   d = new Date(str.replace(" ", "T") + "Z");
   if (!isNaN(d.getTime())) return d;
-  // Try replacing space with T only
   d = new Date(str.replace(" ", "T"));
   if (!isNaN(d.getTime())) return d;
   return new Date(0);
@@ -79,6 +75,18 @@ function getTimeAgo(date) {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
   return `${Math.floor(hours / 24)}d ago`;
+}
+
+// For saved articles: shows relative time if recent, otherwise a real date
+function getDateLabel(date) {
+  const d = date instanceof Date ? date : parseDate(date);
+  if (!d || isNaN(d.getTime()) || d.getTime() === 0) return "";
+  const minutes = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function withTimeout(promise, ms) {
@@ -108,38 +116,40 @@ const NEWS_SOURCES = [
 ];
 
 const BSKY_ACCOUNTS = [
-  { name: "Wario64", handle: "wario64.bsky.social" },
-  { name: "CheapAssGamer", handle: "cheapassgamer.com" },
-  { name: "Jason Schreier", handle: "jasonschreier.bsky.social" },
-  { name: "Tom Warren", handle: "tomwarren.co.uk" },
-  { name: "Geoff Keighley", handle: "geoffkeighley.bsky.social" },
-  { name: "Shinobi602", handle: "shinobi602.bsky.social" },
-  { name: "Stealth40k", handle: "stealth40k.bsky.social" },
-  { name: "Knoebel", handle: "knoebel.bsky.social" },
-  { name: "Mat Piscatella", handle: "matpiscatella.bsky.social" },
-  { name: "Digital Foundry", handle: "digitalfoundry.bsky.social" },
-  { name: "Polygon", handle: "polygon.com" },
-  { name: "IGN", handle: "ign.com" },
-  { name: "Eurogamer", handle: "eurogamer.bsky.social" },
-  { name: "Gematsu", handle: "gematsu.com" },
-  { name: "Xbox", handle: "xbox.com" },
-  { name: "Game Pass", handle: "gamepass.xbox.com" },
-  { name: "PlayStation", handle: "playstation.com" },
-  { name: "Steam", handle: "steampowered.com" },
-  { name: "Nintendo Life", handle: "nintendolife.com" },
-  { name: "VGC", handle: "videogameschronicle.com" },
-  { name: "OW Calvary", handle: "owcavalry.com" },
-  { name: "GamesIndustry", handle: "gibiz.bsky.social" },
-  { name: "Hazzadorgamin", handle: "hazzadorgamin.bsky.social" },
-  { name: "Capcom USA", handle: "capcomusa.com" },
-  { name: "Remedy", handle: "remedygames.com" },
-  { name: "Devolver", handle: "devolverdigital.com" },
-  { name: "Supergiant", handle: "supergiantgames.bsky.social" },
-  { name: "RGG Studio", handle: "rggwest.bsky.social" },
-  { name: "Square Enix", handle: "square-enix-games.com" },
-  { name: "Focus Ent.", handle: "focus-entmt.com" },
-  { name: "Sucker Punch", handle: "suckerpunchprod.bsky.social" },
+  { name: "Wario64", handle: "wario64.bsky.social", group: "Deals" },
+  { name: "CheapAssGamer", handle: "cheapassgamer.com", group: "Deals" },
+  { name: "OW Calvary", handle: "owcavalry.com", group: "Deals" },
+  { name: "Jason Schreier", handle: "jasonschreier.bsky.social", group: "Press" },
+  { name: "Tom Warren", handle: "tomwarren.co.uk", group: "Press" },
+  { name: "Geoff Keighley", handle: "geoffkeighley.bsky.social", group: "Press" },
+  { name: "Shinobi602", handle: "shinobi602.bsky.social", group: "Press" },
+  { name: "Stealth40k", handle: "stealth40k.bsky.social", group: "Press" },
+  { name: "Knoebel", handle: "knoebel.bsky.social", group: "Press" },
+  { name: "Mat Piscatella", handle: "matpiscatella.bsky.social", group: "Press" },
+  { name: "Digital Foundry", handle: "digitalfoundry.bsky.social", group: "Press" },
+  { name: "Polygon", handle: "polygon.com", group: "Press" },
+  { name: "IGN", handle: "ign.com", group: "Press" },
+  { name: "Eurogamer", handle: "eurogamer.bsky.social", group: "Press" },
+  { name: "Gematsu", handle: "gematsu.com", group: "Press" },
+  { name: "GamesIndustry", handle: "gibiz.bsky.social", group: "Press" },
+  { name: "Hazzadorgamin", handle: "hazzadorgamin.bsky.social", group: "Press" },
+  { name: "VGC", handle: "videogameschronicle.com", group: "Press" },
+  { name: "Xbox", handle: "xbox.com", group: "Xbox" },
+  { name: "Game Pass", handle: "gamepass.xbox.com", group: "Xbox" },
+  { name: "PlayStation", handle: "playstation.com", group: "PlayStation" },
+  { name: "Nintendo Life", handle: "nintendolife.com", group: "Nintendo" },
+  { name: "Steam", handle: "steampowered.com", group: "PC" },
+  { name: "Capcom USA", handle: "capcomusa.com", group: "Dev" },
+  { name: "Remedy", handle: "remedygames.com", group: "Dev" },
+  { name: "Devolver", handle: "devolverdigital.com", group: "Dev" },
+  { name: "Supergiant", handle: "supergiantgames.bsky.social", group: "Dev" },
+  { name: "RGG Studio", handle: "rggwest.bsky.social", group: "Dev" },
+  { name: "Square Enix", handle: "square-enix-games.com", group: "Dev" },
+  { name: "Focus Ent.", handle: "focus-entmt.com", group: "Dev" },
+  { name: "Sucker Punch", handle: "suckerpunchprod.bsky.social", group: "Dev" },
 ];
+
+const SOCIAL_FILTERS = ["All", "Deals", "Press", "Xbox", "PlayStation", "Nintendo", "PC", "Dev"];
 
 /* ═══════════════════════════════════════════
    COMPONENTS
@@ -227,6 +237,7 @@ function BskyCard({ name, handle, avatar, time, text, link, isDealFlag, extTitle
 export default function Home() {
   const [activeTab, setActiveTab] = useState("News");
   const [activeFilter, setActiveFilter] = useState("All");
+  const [socialFilter, setSocialFilter] = useState("All");
   const [dealsOnly, setDealsOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [articles, setArticles] = useState([]);
@@ -237,6 +248,11 @@ export default function Home() {
   const [savedArticles, setSavedArticles] = useState([]);
   const [newsRenderLimit, setNewsRenderLimit] = useState(30);
   const [socialRenderLimit, setSocialRenderLimit] = useState(30);
+  const [newArticleCount, setNewArticleCount] = useState(0);
+
+  const seenLinksRef = useRef(new Set());
+  const activeTabRef = useRef("News");
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
 
   // Load bookmarks from localStorage on mount
   useEffect(() => {
@@ -320,6 +336,18 @@ export default function Home() {
     const seen = new Set();
     const deduped = fresh.filter(a => { if (seen.has(a.link)) return false; seen.add(a.link); return true; });
     deduped.sort((a, b) => b.date - a.date);
+
+    // Badge: count genuinely new articles on subsequent fetches
+    if (seenLinksRef.current.size === 0) {
+      deduped.forEach(a => seenLinksRef.current.add(a.link));
+    } else {
+      const newOnes = deduped.filter(a => !seenLinksRef.current.has(a.link));
+      deduped.forEach(a => seenLinksRef.current.add(a.link));
+      if (newOnes.length > 0 && activeTabRef.current !== "News") {
+        setNewArticleCount(prev => prev + newOnes.length);
+      }
+    }
+
     setArticles(deduped);
     setIsNewsLoading(false);
   }, []);
@@ -356,6 +384,7 @@ export default function Home() {
             link: postId ? `https://bsky.app/profile/${authorHandle}/post/${postId}` : `https://bsky.app/profile/${account.handle}`,
             extTitle: ext?.title || "",
             extUrl: ext?.uri || "",
+            group: account.group,
           };
         }).filter(p => p.text);
 
@@ -391,7 +420,16 @@ export default function Home() {
 
   // Reset render limits on tab/filter changes
   useEffect(() => { setNewsRenderLimit(30); }, [activeFilter, activeTab]);
-  useEffect(() => { setSocialRenderLimit(30); }, [activeTab]);
+  useEffect(() => { setSocialRenderLimit(30); }, [activeTab, socialFilter]);
+
+  function switchTab(tab) {
+    setActiveTab(tab);
+    setSearchQuery("");
+    setActiveFilter("All");
+    setDealsOnly(false);
+    setSocialFilter("All");
+    if (tab === "News") setNewArticleCount(0);
+  }
 
   // Filtered articles
   const filteredArticles = articles
@@ -400,6 +438,7 @@ export default function Home() {
     .filter(a => !searchQuery || a.title.toLowerCase().includes(searchQuery.toLowerCase()) || a.source.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const filteredSocial = socialPosts
+    .filter(p => socialFilter === "All" || p.group === socialFilter)
     .filter(p => !searchQuery || p.text.toLowerCase().includes(searchQuery.toLowerCase()) || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.handle.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const filteredSaved = savedArticles
@@ -419,8 +458,11 @@ export default function Home() {
 
       <div className="nav">
         {["News", "Social", "Saved"].map(tab => (
-          <button key={tab} className={`nav-btn ${activeTab === tab ? "active" : ""}`} onClick={() => { setActiveTab(tab); setSearchQuery(""); setActiveFilter("All"); setDealsOnly(false); }}>
+          <button key={tab} className={`nav-btn ${activeTab === tab ? "active" : ""}`} onClick={() => switchTab(tab)}>
             {tab}
+            {tab === "News" && newArticleCount > 0 && (
+              <span className="nav-badge">{newArticleCount}</span>
+            )}
           </button>
         ))}
       </div>
@@ -447,6 +489,16 @@ export default function Home() {
               🔥 DEALS ({dealCount})
             </button>
           )}
+        </div>
+      )}
+
+      {activeTab === "Social" && (
+        <div className="pills">
+          {SOCIAL_FILTERS.map(name => (
+            <button key={name} className={`pill ${socialFilter === name ? "on" : ""}`} onClick={() => setSocialFilter(name)}>
+              {name}
+            </button>
+          ))}
         </div>
       )}
 
@@ -490,7 +542,7 @@ export default function Home() {
                     isSaved={savedArticles.some(s => s.link === article.link)}
                     onSave={() => toggleSave(article)}
                     isDealFlag={isDeal(article.title)}
-                    isBreaking={article.date && (Date.now() - article.date.getTime()) < 3600000}
+                    isBreaking={article.date && (Date.now() - article.date.getTime()) < 1800000}
                   />
                 ))}
 
@@ -563,7 +615,7 @@ export default function Home() {
                     key={article.link}
                     title={article.title}
                     source={article.source}
-                    time={getTimeAgo(article.date)}
+                    time={getDateLabel(article.date)}
                     color={article.color || "var(--green)"}
                     image={article.image}
                     link={article.link}
