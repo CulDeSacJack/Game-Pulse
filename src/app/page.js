@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 /* ═══════════════════════════════════════════
    DEAL DETECTION
 ═══════════════════════════════════════════ */
-const DEAL_WORDS = ["deal","deals","sale","discount","free","price drop","price cut","lowest price","clearance","save","savings","% off","$","cheapest","under $","giveaway","offer","bundle","flash sale","price match"];
+const DEAL_WORDS = ["deal","deals","sale","discount","price drop","price cut","lowest price","clearance","save","savings","% off","cheapest","under $","giveaway","free game","free dlc","free download","free to keep","free play","bundle","flash sale","price match"];
 function isDeal(text) {
   if (!text) return false;
   const t = text.toLowerCase();
@@ -114,7 +114,6 @@ const NEWS_SOURCES = [
   { name: "Kotaku",         color: "#f43f5e", platform: null,           url: "https://kotaku.com/rss" },
   { name: "Eurogamer",      color: "#a855f7", platform: null,           url: "https://www.eurogamer.net/feed" },
   { name: "VGC",            color: "#eab308", platform: null,           url: "https://www.videogameschronicle.com/feed/" },
-  { name: "The Verge",      color: "#ff4081", platform: "Xbox",         url: "https://www.theverge.com/games/rss/index.xml" },
   { name: "Insider Gaming", color: "#00e5ff", platform: "Xbox",         url: "https://insider-gaming.com/feed/" },
   { name: "GamesRadar",     color: "#f5a623", platform: null,           url: "https://www.gamesradar.com/rss/" },
   { name: "Game Informer",  color: "#d4af37", platform: null,           url: "https://gameinformer.com/rss.xml" },
