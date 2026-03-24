@@ -156,7 +156,18 @@ const BSKY_ACCOUNTS = [
   { name: "RGG Studio",     handle: "rggwest.bsky.social",           group: "Dev" },
   { name: "Square Enix",    handle: "square-enix-games.com",         group: "Dev" },
   { name: "Focus Ent.",     handle: "focus-entmt.com",               group: "Dev" },
-  { name: "Sucker Punch",   handle: "suckerpunchprod.bsky.social",   group: "Dev" },
+  { name: "Sucker Punch",          handle: "suckerpunchprod.bsky.social",  group: "Dev" },
+  { name: "Bethesda Studios",      handle: "bethesdastudios.com",          group: "Dev" },
+  { name: "Bethesda",              handle: "bethesda.net",                 group: "Dev" },
+  { name: "Annapurna",             handle: "annapurna.com",                group: "Dev" },
+  { name: "505 Games",             handle: "505games.com",                 group: "Dev" },
+  { name: "Pure Xbox",             handle: "purexbox.com",                 group: "Xbox" },
+  { name: "GOG",                   handle: "gog.com",                      group: "PC" },
+  { name: "Steam Deck",            handle: "steamdeck.com",                group: "PC" },
+  { name: "Valve",                 handle: "valvesoftware.com",            group: "PC" },
+  { name: "SteamDB",               handle: "steamdb.info",                 group: "PC" },
+  { name: "Green Man Gaming",      handle: "greenmangaming.com",           group: "Deals" },
+  { name: "GameSpot",              handle: "gamespot.com",                 group: "Press" },
 ];
 
 const SOCIAL_FILTERS = ["All", "Deals", "Press", "Xbox", "PlayStation", "Nintendo", "PC", "Dev"];
