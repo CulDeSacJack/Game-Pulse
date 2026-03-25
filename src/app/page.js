@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import BskyCard from "./components/BskyCard";
 import FeedStatusBar from "./components/FeedStatusBar";
 import NewsCard from "./components/NewsCard";
+import SettingsDrawer from "./components/SettingsDrawer";
 import TopStoryCard from "./components/TopStoryCard";
 import useNow from "./hooks/useNow";
 import usePersistentState from "./hooks/usePersistentState";
@@ -24,8 +25,11 @@ import {
   isGamingRelevant,
   matchesArticleQuery,
   matchesSocialQuery,
+  normalizeKeyword,
   parseDate,
+  removeKeyword,
   stripHtml,
+  upsertKeyword,
   withTimeout,
 } from "./lib/feed-utils";
 
@@ -158,6 +162,100 @@ function getFailureTitle(label, failedNames) {
   return `${label}: ${failedNames.join(", ")}`;
 }
 
+async function refreshNewsFeed({
+  activeTabRef,
+  seenLinksRef,
+  setArticles,
+  setIsNewsLoading,
+  setNewArticleCount,
+  setNewsStatus,
+}) {
+  setIsNewsLoading(true);
+
+  const results = await Promise.all(NEWS_SOURCES.map(loadNewsSource));
+  const fresh = results.flatMap((result) => result.items);
+  const successfulCount = results.filter((result) => result.ok).length;
+  const failedNames = results.filter((result) => !result.ok).map((result) => result.source);
+  const seen = new Set();
+  const deduped = fresh.filter((article) => {
+    if (seen.has(article.link)) return false;
+    seen.add(article.link);
+    return true;
+  });
+
+  deduped.sort((left, right) => right.date - left.date);
+
+  if (deduped.length > 0) {
+    if (seenLinksRef.current.size === 0) {
+      deduped.forEach((article) => seenLinksRef.current.add(article.link));
+    } else {
+      const newItems = deduped.filter((article) => !seenLinksRef.current.has(article.link));
+      deduped.forEach((article) => seenLinksRef.current.add(article.link));
+      if (newItems.length > 0 && activeTabRef.current !== "News") {
+        setNewArticleCount((previous) => previous + newItems.length);
+      }
+    }
+
+    setArticles(deduped);
+  }
+
+  setNewsStatus((previous) => ({
+    totalCount: NEWS_SOURCES.length,
+    successfulCount,
+    failedNames,
+    lastUpdatedAt: successfulCount > 0 ? Date.now() : previous.lastUpdatedAt,
+  }));
+  setIsNewsLoading(false);
+}
+
+async function refreshSocialFeed({
+  activeTabRef,
+  seenSocialIdsRef,
+  setIsSocialLoading,
+  setNewSocialCount,
+  setSocialLoaded,
+  setSocialPosts,
+  setSocialStatus,
+}) {
+  setIsSocialLoading(true);
+
+  const results = await Promise.all(BSKY_ACCOUNTS.map(loadSocialAccount));
+  const fresh = results.flatMap((result) => result.items);
+  const successfulCount = results.filter((result) => result.ok).length;
+  const failedNames = results.filter((result) => !result.ok).map((result) => result.account);
+  const seen = new Set();
+  const deduped = fresh.filter((post) => {
+    if (seen.has(post.id)) return false;
+    seen.add(post.id);
+    return true;
+  });
+
+  deduped.sort((left, right) => right.date - left.date);
+
+  if (deduped.length > 0) {
+    if (seenSocialIdsRef.current.size === 0) {
+      deduped.forEach((post) => seenSocialIdsRef.current.add(post.id));
+    } else {
+      const newItems = deduped.filter((post) => !seenSocialIdsRef.current.has(post.id));
+      deduped.forEach((post) => seenSocialIdsRef.current.add(post.id));
+      if (newItems.length > 0 && activeTabRef.current !== "Social") {
+        setNewSocialCount((previous) => previous + newItems.length);
+      }
+    }
+
+    setSocialPosts(deduped);
+  }
+
+  setSocialStatus((previous) => ({
+    totalCount: BSKY_ACCOUNTS.length,
+    successfulCount,
+    failedNames,
+    lastUpdatedAt: successfulCount > 0 ? Date.now() : previous.lastUpdatedAt,
+  }));
+  setIsSocialLoading(false);
+  setSocialLoaded(true);
+}
+
 export default function Home() {
   const now = useNow();
   const [preferences, setPreferences] = usePersistentState("pulsecast_preferences", DEFAULT_PREFERENCES);
@@ -177,10 +275,12 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [lastDismissedStory, setLastDismissedStory] = useState(null);
   const [lastClearedSaved, setLastClearedSaved] = useState([]);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const seenLinksRef = useRef(new Set());
   const seenSocialIdsRef = useRef(new Set());
   const activeTabRef = useRef("News");
 
+  const mergedPreferences = { ...DEFAULT_PREFERENCES, ...preferences };
   const {
     activeTab,
     platformFilter,
@@ -188,104 +288,69 @@ export default function Home() {
     socialFilter,
     dealsOnly,
     gamingOnly,
+    strictRelevance,
     savedSort,
     mutedSources,
     mutedAccounts,
-  } = preferences;
+    customIncludeKeywords,
+    customExcludeKeywords,
+  } = mergedPreferences;
 
-  const updatePreferences = useCallback((patch) => {
+  const updatePreferences = (patch) => {
     setPreferences((previous) => ({
+      ...DEFAULT_PREFERENCES,
       ...previous,
-      ...(typeof patch === "function" ? patch(previous) : patch),
+      ...(typeof patch === "function" ? patch({ ...DEFAULT_PREFERENCES, ...previous }) : patch),
     }));
-  }, [setPreferences]);
+  };
 
   useEffect(() => {
     activeTabRef.current = activeTab;
   }, [activeTab]);
 
-  const fetchNews = useCallback(async () => {
-    setIsNewsLoading(true);
-
-    const results = await Promise.all(NEWS_SOURCES.map(loadNewsSource));
-    const fresh = results.flatMap((result) => result.items);
-    const successfulCount = results.filter((result) => result.ok).length;
-    const failedNames = results.filter((result) => !result.ok).map((result) => result.source);
-    const seen = new Set();
-    const deduped = fresh.filter((article) => {
-      if (seen.has(article.link)) return false;
-      seen.add(article.link);
-      return true;
+  const fetchNews = useEffectEvent(async () => {
+    await refreshNewsFeed({
+      activeTabRef,
+      seenLinksRef,
+      setArticles,
+      setIsNewsLoading,
+      setNewArticleCount,
+      setNewsStatus,
     });
+  });
 
-    deduped.sort((left, right) => right.date - left.date);
-
-    if (deduped.length > 0) {
-      if (seenLinksRef.current.size === 0) {
-        deduped.forEach((article) => seenLinksRef.current.add(article.link));
-      } else {
-        const newItems = deduped.filter((article) => !seenLinksRef.current.has(article.link));
-        deduped.forEach((article) => seenLinksRef.current.add(article.link));
-        if (newItems.length > 0 && activeTabRef.current !== "News") {
-          setNewArticleCount((previous) => previous + newItems.length);
-        }
-      }
-
-      setArticles(deduped);
-    }
-
-    setNewsStatus((previous) => ({
-      totalCount: NEWS_SOURCES.length,
-      successfulCount,
-      failedNames,
-      lastUpdatedAt: successfulCount > 0 ? Date.now() : previous.lastUpdatedAt,
-    }));
-    setIsNewsLoading(false);
-  }, []);
-
-  const fetchSocial = useCallback(async () => {
-    setIsSocialLoading(true);
-
-    const results = await Promise.all(BSKY_ACCOUNTS.map(loadSocialAccount));
-    const fresh = results.flatMap((result) => result.items);
-    const successfulCount = results.filter((result) => result.ok).length;
-    const failedNames = results.filter((result) => !result.ok).map((result) => result.account);
-    const seen = new Set();
-    const deduped = fresh.filter((post) => {
-      if (seen.has(post.id)) return false;
-      seen.add(post.id);
-      return true;
+  const fetchSocial = useEffectEvent(async () => {
+    await refreshSocialFeed({
+      activeTabRef,
+      seenSocialIdsRef,
+      setIsSocialLoading,
+      setNewSocialCount,
+      setSocialLoaded,
+      setSocialPosts,
+      setSocialStatus,
     });
-
-    deduped.sort((left, right) => right.date - left.date);
-
-    if (deduped.length > 0) {
-      if (seenSocialIdsRef.current.size === 0) {
-        deduped.forEach((post) => seenSocialIdsRef.current.add(post.id));
-      } else {
-        const newItems = deduped.filter((post) => !seenSocialIdsRef.current.has(post.id));
-        deduped.forEach((post) => seenSocialIdsRef.current.add(post.id));
-        if (newItems.length > 0 && activeTabRef.current !== "Social") {
-          setNewSocialCount((previous) => previous + newItems.length);
-        }
-      }
-
-      setSocialPosts(deduped);
-    }
-
-    setSocialStatus((previous) => ({
-      totalCount: BSKY_ACCOUNTS.length,
-      successfulCount,
-      failedNames,
-      lastUpdatedAt: successfulCount > 0 ? Date.now() : previous.lastUpdatedAt,
-    }));
-    setIsSocialLoading(false);
-    setSocialLoaded(true);
-  }, []);
+  });
 
   function handleRefresh() {
-    void fetchNews();
-    if (socialLoaded || activeTab === "Social") void fetchSocial();
+    void refreshNewsFeed({
+      activeTabRef,
+      seenLinksRef,
+      setArticles,
+      setIsNewsLoading,
+      setNewArticleCount,
+      setNewsStatus,
+    });
+    if (socialLoaded || activeTab === "Social") {
+      void refreshSocialFeed({
+        activeTabRef,
+        seenSocialIdsRef,
+        setIsSocialLoading,
+        setNewSocialCount,
+        setSocialLoaded,
+        setSocialPosts,
+        setSocialStatus,
+      });
+    }
   }
 
   useEffect(() => {
@@ -300,7 +365,7 @@ export default function Home() {
     }, 10 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [fetchNews, fetchSocial, socialLoaded]);
+  }, [socialLoaded]);
 
   useEffect(() => {
     async function loadSocialIfNeeded() {
@@ -310,7 +375,7 @@ export default function Home() {
     }
 
     void loadSocialIfNeeded();
-  }, [activeTab, fetchSocial, isSocialLoading, socialLoaded]);
+  }, [activeTab, isSocialLoading, socialLoaded]);
 
   function switchTab(tab) {
     updatePreferences({
@@ -399,6 +464,63 @@ export default function Home() {
     setSocialRenderLimit(30);
   }
 
+  function addCustomIncludeKeyword(keyword) {
+    const normalizedKeyword = normalizeKeyword(keyword);
+    if (!normalizedKeyword) return;
+
+    updatePreferences((previous) => ({
+      customIncludeKeywords: upsertKeyword(previous.customIncludeKeywords, normalizedKeyword),
+    }));
+    setNewsRenderLimit(30);
+    setSocialRenderLimit(30);
+  }
+
+  function removeCustomIncludeKeyword(keyword) {
+    updatePreferences((previous) => ({
+      customIncludeKeywords: removeKeyword(previous.customIncludeKeywords, keyword),
+    }));
+    setNewsRenderLimit(30);
+    setSocialRenderLimit(30);
+  }
+
+  function addCustomExcludeKeyword(keyword) {
+    const normalizedKeyword = normalizeKeyword(keyword);
+    if (!normalizedKeyword) return;
+
+    updatePreferences((previous) => ({
+      customExcludeKeywords: upsertKeyword(previous.customExcludeKeywords, normalizedKeyword),
+    }));
+    setNewsRenderLimit(30);
+    setSocialRenderLimit(30);
+  }
+
+  function removeCustomExcludeKeyword(keyword) {
+    updatePreferences((previous) => ({
+      customExcludeKeywords: removeKeyword(previous.customExcludeKeywords, keyword),
+    }));
+    setNewsRenderLimit(30);
+    setSocialRenderLimit(30);
+  }
+
+  function restoreFilterDefaults() {
+    updatePreferences((previous) => ({
+      ...previous,
+      activeFilter: DEFAULT_PREFERENCES.activeFilter,
+      platformFilter: DEFAULT_PREFERENCES.platformFilter,
+      socialFilter: DEFAULT_PREFERENCES.socialFilter,
+      dealsOnly: DEFAULT_PREFERENCES.dealsOnly,
+      gamingOnly: DEFAULT_PREFERENCES.gamingOnly,
+      strictRelevance: DEFAULT_PREFERENCES.strictRelevance,
+      mutedSources: DEFAULT_PREFERENCES.mutedSources,
+      mutedAccounts: DEFAULT_PREFERENCES.mutedAccounts,
+      customIncludeKeywords: DEFAULT_PREFERENCES.customIncludeKeywords,
+      customExcludeKeywords: DEFAULT_PREFERENCES.customExcludeKeywords,
+    }));
+    setSearchQuery("");
+    setNewsRenderLimit(30);
+    setSocialRenderLimit(30);
+  }
+
   const platformSources = platformFilter === "All"
     ? null
     : new Set(NEWS_SOURCES.filter((source) => source.platform === platformFilter).map((source) => source.name));
@@ -407,13 +529,20 @@ export default function Home() {
     ? NEWS_SOURCES.map((source) => source.name)
     : NEWS_SOURCES.filter((source) => source.platform === platformFilter).map((source) => source.name))];
 
+  const relevanceOptions = {
+    strictMode: strictRelevance,
+    includeKeywords: customIncludeKeywords,
+    excludeKeywords: customExcludeKeywords,
+    trustedSource: true,
+  };
+
   const articlePool = articles
     .filter((article) => !mutedSources.includes(article.source))
-    .filter((article) => !gamingOnly || isGamingRelevant(getArticleTopicText(article)));
+    .filter((article) => !gamingOnly || isGamingRelevant(getArticleTopicText(article), relevanceOptions));
 
   const socialPool = socialPosts
     .filter((post) => !mutedAccounts.includes(post.handle))
-    .filter((post) => !gamingOnly || isGamingRelevant(getSocialTopicText(post)));
+    .filter((post) => !gamingOnly || isGamingRelevant(getSocialTopicText(post), relevanceOptions));
 
   const filteredArticles = articlePool
     .filter((article) => !platformSources || platformSources.has(article.source))
@@ -468,6 +597,19 @@ export default function Home() {
           tone: "muted",
         }
       : null,
+    strictRelevance
+      ? {
+          label: "Strict filter",
+          tone: "info",
+        }
+      : null,
+    customIncludeKeywords.length > 0 || customExcludeKeywords.length > 0
+      ? {
+          label: `Tune ${customIncludeKeywords.length}/${customExcludeKeywords.length}`,
+          tone: "muted",
+          title: `Keep ${customIncludeKeywords.length}, hide ${customExcludeKeywords.length}`,
+        }
+      : null,
   ];
 
   const socialStatusItems = [
@@ -491,6 +633,19 @@ export default function Home() {
           label: `${mutedAccounts.length} muted`,
           tone: "muted",
           title: `Muted accounts: ${mutedAccounts.join(", ")}`,
+        }
+      : null,
+    strictRelevance
+      ? {
+          label: "Strict filter",
+          tone: "info",
+        }
+      : null,
+    customIncludeKeywords.length > 0 || customExcludeKeywords.length > 0
+      ? {
+          label: `Tune ${customIncludeKeywords.length}/${customExcludeKeywords.length}`,
+          tone: "muted",
+          title: `Keep ${customIncludeKeywords.length}, hide ${customExcludeKeywords.length}`,
         }
       : null,
   ];
@@ -562,12 +717,20 @@ export default function Home() {
             <div className="logo">PULSECAST</div>
             <div className="tagline">Gaming News · Curated</div>
           </div>
-          <button type="button" className="refresh-btn" onClick={handleRefresh} disabled={isRefreshing} title="Refresh">
-            <svg className={isRefreshing ? "spinning" : ""} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="23 4 23 10 17 10"/>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-            </svg>
-          </button>
+          <div className="header-actions">
+            <button type="button" className={`settings-btn ${isSettingsOpen ? "active" : ""}`} onClick={() => setIsSettingsOpen(true)} title="Settings">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0A1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </button>
+            <button type="button" className="refresh-btn" onClick={handleRefresh} disabled={isRefreshing} title="Refresh">
+              <svg className={isRefreshing ? "spinning" : ""} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -845,6 +1008,43 @@ export default function Home() {
           </>
         )}
       </div>
+
+      <SettingsDrawer
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        gamingOnly={gamingOnly}
+        strictRelevance={strictRelevance}
+        dealsOnly={dealsOnly}
+        onToggleGamingOnly={() => {
+          updatePreferences({ gamingOnly: !gamingOnly });
+          setNewsRenderLimit(30);
+          setSocialRenderLimit(30);
+        }}
+        onToggleStrictRelevance={() => {
+          updatePreferences({ strictRelevance: !strictRelevance });
+          setNewsRenderLimit(30);
+          setSocialRenderLimit(30);
+        }}
+        onToggleDealsOnly={() => {
+          updatePreferences({ dealsOnly: !dealsOnly });
+          setNewsRenderLimit(30);
+        }}
+        customIncludeKeywords={customIncludeKeywords}
+        customExcludeKeywords={customExcludeKeywords}
+        onAddIncludeKeyword={addCustomIncludeKeyword}
+        onRemoveIncludeKeyword={removeCustomIncludeKeyword}
+        onAddExcludeKeyword={addCustomExcludeKeyword}
+        onRemoveExcludeKeyword={removeCustomExcludeKeyword}
+        mutedSources={mutedSources}
+        mutedAccounts={mutedAccounts}
+        onRemoveMutedSource={toggleMutedSource}
+        onRemoveMutedAccount={toggleMutedAccount}
+        hiddenStoriesCount={dismissedStories.length}
+        onResetHiddenStories={resetHiddenStories}
+        savedArticlesCount={savedArticles.length}
+        onClearSavedArticles={clearSavedArticles}
+        onRestoreFilterDefaults={restoreFilterDefaults}
+      />
     </div>
   );
 }

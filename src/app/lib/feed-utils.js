@@ -1,6 +1,7 @@
 export const DEAL_WORDS = ["deal","deals","sale","discount","price drop","price cut","lowest price","clearance","save","savings","% off","cheapest","under $","giveaway","free game","free dlc","free download","free to keep","free play","bundle","flash sale","price match"];
 export const GAMING_SIGNAL_TERMS = ["video game","videogame","gaming","gamer","dlc","expansion","patch","hotfix","mod","mods","remaster","remastered","steam","steam deck","epic games","gog","playstation","ps5","ps4","ps vr2","psvr2","xbox","game pass","nintendo","switch","switch 2","eshop","joy-con","console","controller","handheld","multiplayer","single-player","single player","co-op","coop","fps","rpg","jrpg","roguelike","metroidvania","mmo","mmorpg","battle royale","indie game","esports","nintendo direct","state of play","xbox showcase","game awards","capcom","bethesda","ubisoft","square enix","sega","devolver","larian","valve","blizzard","activision","bandai namco","fromsoftware","konami","remedy","supergiant","annapurna","505 games"];
-export const OFF_TOPIC_TERMS = ["movie","movies","film","films","tv show","television","netflix","hbo","disney+","disney plus","prime video","paramount+","peacock","box office","album","music video","concert","tour","comic","comics","manga","anime","novel","book","lego","funko","fashion","sneaker","apparel"];
+export const GAMING_CONTEXT_TERMS = ["review","reviews","preview","previews","hands-on","hands on","interview","early access","release","release date","launch","launches","launching","out now","available now","coming soon","gameplay","demo","beta","alpha","roadmap","update","updates","patch notes","quest","quests","boss","bosses","trophy","trophies","achievement","achievements","developer","developers","studio","studios","publisher","publishers","franchise","sequel","port","ports","crossplay","cross-play","server","servers","build","class","classes","skill tree","inventory","battle pass","season pass","campaign","map","maps","matchmaking","player count","players","copies","sold","sales","wishlist","announcement","announced","delay","delayed"];
+export const OFF_TOPIC_TERMS = ["movie","movies","film","films","tv show","television","netflix","hbo","disney+","disney plus","prime video","paramount+","peacock","box office","album","music video","concert","tour","comic","comics","manga","anime","novel","book","lego","funko","fashion","sneaker","apparel","collectible","collectibles","merch","merchandise","vinyl","blu-ray","bluray","soundtrack","episode","episodes","season finale","board game","tabletop","trading card","cosplay","action figure"];
 export const STOP_WORDS = new Set(["the","a","an","and","or","but","in","on","at","to","for","of","with","is","are","was","were","be","been","has","have","had","do","does","did","will","would","could","should","can","may","not","no","its","it","this","that","from","by","as","up","out","if","about","than","into","over","after","new","how","all","just","one","get","got","also","more","very","what","when","who","why","where","which","their","they","them","your","you","our","we","my","me","he","she","his","her","game","games","gaming"]);
 
 export const NEWS_SOURCES = [
@@ -89,9 +90,12 @@ export const DEFAULT_PREFERENCES = {
   socialFilter: "All",
   dealsOnly: false,
   gamingOnly: true,
+  strictRelevance: true,
   savedSort: "saved",
   mutedSources: [],
   mutedAccounts: [],
+  customIncludeKeywords: [],
+  customExcludeKeywords: [],
 };
 
 function escapeForRegex(text) {
@@ -102,8 +106,24 @@ function hasKeyword(text, keyword) {
   return new RegExp(`(^|[^a-z0-9])${escapeForRegex(keyword)}([^a-z0-9]|$)`, "i").test(text);
 }
 
-function hasAnyKeyword(text, keywords) {
-  return keywords.some(keyword => hasKeyword(text, keyword));
+function getMatchedKeywords(text, keywords) {
+  return [...new Set(keywords.map(normalizeKeyword).filter(Boolean))].filter(keyword => hasKeyword(text, keyword));
+}
+
+export function normalizeKeyword(keyword) {
+  return String(keyword || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+export function upsertKeyword(keywords, keyword) {
+  const normalizedKeyword = normalizeKeyword(keyword);
+  if (!normalizedKeyword) return keywords;
+  if (keywords.includes(normalizedKeyword)) return keywords;
+  return [...keywords, normalizedKeyword];
+}
+
+export function removeKeyword(keywords, keyword) {
+  const normalizedKeyword = normalizeKeyword(keyword);
+  return keywords.filter(existingKeyword => existingKeyword !== normalizedKeyword);
 }
 
 export function isDeal(text) {
@@ -112,15 +132,28 @@ export function isDeal(text) {
   return DEAL_WORDS.some(word => normalized.includes(word));
 }
 
-export function isGamingRelevant(text) {
+export function isGamingRelevant(text, options = {}) {
   if (!text) return false;
   const normalized = text.toLowerCase();
-  const hasGamingSignal = hasAnyKeyword(normalized, GAMING_SIGNAL_TERMS);
-  const hasOffTopicSignal = hasAnyKeyword(normalized, OFF_TOPIC_TERMS);
+  const customIncludeKeywords = Array.isArray(options.includeKeywords) ? options.includeKeywords : [];
+  const customExcludeKeywords = Array.isArray(options.excludeKeywords) ? options.excludeKeywords : [];
+  const strictMode = Boolean(options.strictMode);
+  const trustedSource = Boolean(options.trustedSource);
 
-  if (isDeal(normalized)) return hasGamingSignal;
-  if (hasOffTopicSignal && !hasGamingSignal) return false;
-  return true;
+  if (getMatchedKeywords(normalized, customIncludeKeywords).length > 0) return true;
+  if (getMatchedKeywords(normalized, customExcludeKeywords).length > 0) return false;
+
+  const gamingSignalMatches = getMatchedKeywords(normalized, GAMING_SIGNAL_TERMS);
+  const gamingContextMatches = getMatchedKeywords(normalized, GAMING_CONTEXT_TERMS);
+  const offTopicMatches = getMatchedKeywords(normalized, OFF_TOPIC_TERMS);
+  const gamingScore = gamingSignalMatches.length * 2 + gamingContextMatches.length;
+  const offTopicScore = offTopicMatches.length * 2;
+
+  if (isDeal(normalized)) return gamingScore > 0;
+  if (offTopicScore > 0 && gamingScore === 0) return false;
+  if (gamingScore > 0) return gamingScore >= offTopicScore;
+  if (strictMode) return trustedSource && gamingContextMatches.length > 0 && offTopicMatches.length === 0;
+  return trustedSource ? offTopicMatches.length === 0 : gamingContextMatches.length > 0 && offTopicMatches.length === 0;
 }
 
 export function extractKeywords(title) {
