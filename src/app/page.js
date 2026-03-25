@@ -20,8 +20,9 @@ function extractKeywords(title) {
   return title.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => w.length > 2 && !STOP_WORDS.has(w));
 }
 
-function getTopStories(articles) {
-  const cutoff = Date.now() - 12 * 60 * 60 * 1000;
+function getTopStories(articles, now) {
+  if (!now) return [];
+  const cutoff = now - 12 * 60 * 60 * 1000;
   const recent = articles.filter(a => a.date && a.date.getTime() >= cutoff);
   if (recent.length < 4) return [];
   const clusters = [];
@@ -46,8 +47,9 @@ function getTopStories(articles) {
   return clusters.sort((a, b) => b.count - a.count).slice(0, 3);
 }
 
-function getTrendingKeywords(articles) {
-  const cutoff = Date.now() - 12 * 60 * 60 * 1000;
+function getTrendingKeywords(articles, now) {
+  if (!now) return [];
+  const cutoff = now - 12 * 60 * 60 * 1000;
   const recent = articles.filter(a => a.date && a.date.getTime() >= cutoff);
   const counts = {};
   recent.forEach(a => {
@@ -75,22 +77,22 @@ function parseDate(str) {
   return new Date(0);
 }
 
-function getTimeAgo(date) {
+function getTimeAgo(date, now) {
   const d = date instanceof Date ? date : parseDate(date);
-  if (!d || isNaN(d.getTime()) || d.getTime() === 0) return "";
-  const minutes = Math.floor((Date.now() - d.getTime()) / 60000);
-  if (minutes < 1) return "Just now";
+  if (!now || !d || isNaN(d.getTime()) || d.getTime() === 0) return "";
+  const minutes = Math.floor((now - d.getTime()) / 60000);
+  if (minutes <= 0) return "Just now";
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function getDateLabel(date) {
+function getDateLabel(date, now) {
   const d = date instanceof Date ? date : parseDate(date);
-  if (!d || isNaN(d.getTime()) || d.getTime() === 0) return "";
-  const minutes = Math.floor((Date.now() - d.getTime()) / 60000);
-  if (minutes < 1) return "Just now";
+  if (!now || !d || isNaN(d.getTime()) || d.getTime() === 0) return "";
+  const minutes = Math.floor((now - d.getTime()) / 60000);
+  if (minutes <= 0) return "Just now";
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
@@ -102,6 +104,14 @@ function withTimeout(promise, ms) {
     const timer = setTimeout(() => reject("timeout"), ms);
     promise.then(v => { clearTimeout(timer); resolve(v); }, e => { clearTimeout(timer); reject(e); });
   });
+}
+
+function getDomainLabel(url) {
+  try {
+    return new URL(url).hostname.replace("www.", "");
+  } catch {
+    return "";
+  }
 }
 
 /* ═══════════════════════════════════════════
@@ -218,13 +228,13 @@ function NewsCard({ title, source, time, color, image, link, isSaved, onSave, is
           <div className="card-title">{title}</div>
         </a>
         <div className="card-actions">
-          <button className={`save-btn ${isSaved ? "on" : ""}`} onClick={onSave}>
+          <button type="button" className={`save-btn ${isSaved ? "on" : ""}`} onClick={onSave}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
               <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
             </svg>
             {isSaved ? "SAVED" : "SAVE"}
           </button>
-          <button className={`share-btn ${copied ? "on" : ""}`} onClick={handleShare}>
+          <button type="button" className={`share-btn ${copied ? "on" : ""}`} onClick={handleShare}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
               <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
@@ -235,6 +245,8 @@ function NewsCard({ title, source, time, color, image, link, isSaved, onSave, is
       </div>
       {image && (
         <a href={link} target="_blank" rel="noopener noreferrer">
+          {/* Remote feed images come from many hosts with unknown dimensions, so a raw img is intentional here. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="card-thumb" src={image} alt="" onError={(e) => { e.target.style.display = "none"; }} />
         </a>
       )}
@@ -245,16 +257,16 @@ function NewsCard({ title, source, time, color, image, link, isSaved, onSave, is
 function TopStoryCard({ title, source, color, time, count, link, onDismiss }) {
   return (
     <div className="ts-card" style={{ position: "relative" }}>
-      {/* The Dismiss 'X' Button */}
-      <button 
+      <button
+        type="button"
+        aria-label={`Dismiss ${title}`}
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDismiss(); }}
         style={{ position: "absolute", top: "12px", right: "12px", background: "none", border: "none", color: "var(--text2)", cursor: "pointer", fontSize: "16px", padding: "4px", zIndex: 10 }}
       >
         ✕
       </button>
-      
-      {/* Clicking the link ALSO triggers the dismiss! */}
-      <a href={link} target="_blank" rel="noopener noreferrer" style={{ display: "block", paddingRight: "20px" }} onClick={() => onDismiss()}>
+
+      <a href={link} target="_blank" rel="noopener noreferrer" style={{ display: "block", paddingRight: "20px" }}>
         <div className="ts-title">{title}</div>
         <div className="ts-meta">
           <span className="ts-src" style={{ color }}>{source}</span>
@@ -283,11 +295,13 @@ function BskyCard({ name, handle, avatar, time, text, link, isDealFlag, extTitle
   }
 
   return (
-    <a href={link} target="_blank" rel="noopener noreferrer" style={{ display: "block" }}>
-      <div className="bsky-card">
+    <div className="bsky-card">
+      <a href={link} target="_blank" rel="noopener noreferrer" style={{ display: "block" }}>
         <div className="bsky-head">
           {avatar ? (
             <div className="bsky-avatar" style={{ overflow: "hidden", padding: 0 }}>
+              {/* External avatars are user-provided remote images, so a raw img is intentional here. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
             </div>
           ) : (
@@ -304,21 +318,20 @@ function BskyCard({ name, handle, avatar, time, text, link, isDealFlag, extTitle
         {extTitle && (
           <div className="bsky-link">
             <div className="bsky-link-title">{extTitle}</div>
-            {extUrl && <div className="bsky-link-domain">{(() => { try { return new URL(extUrl).hostname.replace("www.", ""); } catch { return ""; } })()}</div>}
+            {extUrl && <div className="bsky-link-domain">{getDomainLabel(extUrl)}</div>}
           </div>
         )}
-        {/* The New Share Button! */}
-        <div className="card-actions" style={{ marginTop: "12px", display: "flex", gap: "12px" }}>
-          <button className={`share-btn ${copied ? "on" : ""}`} onClick={handleShare}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-            </svg>
-            {copied ? "COPIED" : "SHARE"}
-          </button>
-        </div>
+      </a>
+      <div className="card-actions" style={{ marginTop: "12px", display: "flex", gap: "12px" }}>
+        <button type="button" className={`share-btn ${copied ? "on" : ""}`} onClick={handleShare}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          {copied ? "COPIED" : "SHARE"}
+        </button>
       </div>
-    </a>
+    </div>
   );
 }
 
@@ -343,6 +356,7 @@ export default function Home() {
   const [newArticleCount, setNewArticleCount]   = useState(0);
   const [newSocialCount, setNewSocialCount]     = useState(0);
   const [savedSort, setSavedSort]         = useState("saved");
+  const [now, setNow] = useState(0);
   
   // The New Dismissed Stories Notepad!
   const [dismissedStories, setDismissedStories] = useState([]);
@@ -354,12 +368,23 @@ export default function Home() {
 
   useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
 
+  useEffect(() => {
+    const syncNow = () => setNow(Date.now());
+    syncNow();
+    const interval = setInterval(syncNow, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Load bookmarks
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("pulsecast_bookmarks");
-      if (stored) setSavedArticles(JSON.parse(stored));
-    } catch {}
+    function loadBookmarks() {
+      try {
+        const stored = localStorage.getItem("pulsecast_bookmarks");
+        if (stored) setSavedArticles(JSON.parse(stored));
+      } catch {}
+    }
+
+    loadBookmarks();
   }, []);
 
   useEffect(() => {
@@ -368,10 +393,14 @@ export default function Home() {
 
   // Load and save dismissed stories
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("pulsecast_dismissed");
-      if (stored) setDismissedStories(JSON.parse(stored));
-    } catch {}
+    function loadDismissedStories() {
+      try {
+        const stored = localStorage.getItem("pulsecast_dismissed");
+        if (stored) setDismissedStories(JSON.parse(stored));
+      } catch {}
+    }
+
+    loadDismissedStories();
   }, []);
 
   useEffect(() => {
@@ -380,10 +409,14 @@ export default function Home() {
 
   // 1. Load active tab from memory when the page reboots
   useEffect(() => {
-    try {
-      const storedTab = localStorage.getItem("pulsecast_activeTab");
-      if (storedTab) setActiveTab(storedTab);
-    } catch {}
+    function loadActiveTab() {
+      try {
+        const storedTab = localStorage.getItem("pulsecast_activeTab");
+        if (storedTab) setActiveTab(storedTab);
+      } catch {}
+    }
+
+    loadActiveTab();
   }, []);
 
   // 2. Save active tab to memory ONLY when you click (ignore the reboot!)
@@ -396,18 +429,15 @@ export default function Home() {
   }, [activeTab]);
 
   function handleDismissTopStory(link) {
-    if (!dismissedStories.includes(link)) {
-      setDismissedStories(prev => [...prev, link]);
-    }
+    setDismissedStories(prev => (prev.includes(link) ? prev : [...prev, link]));
   }
 
   function toggleSave(article) {
-    const isAlreadySaved = savedArticles.some(s => s.link === article.link);
-    if (isAlreadySaved) {
-      setSavedArticles(prev => prev.filter(s => s.link !== article.link));
-    } else {
-      setSavedArticles(prev => [...prev, { ...article, date: article.date?.toISOString?.() || article.date, savedAt: Date.now() }]);
-    }
+    setSavedArticles(prev => (
+      prev.some(saved => saved.link === article.link)
+        ? prev.filter(saved => saved.link !== article.link)
+        : [...prev, { ...article, date: article.date?.toISOString?.() || article.date, savedAt: Date.now() }]
+    ));
   }
 
   const fetchNews = useCallback(async () => {
@@ -493,7 +523,7 @@ export default function Home() {
           const authorHandle = post.author?.handle || account.handle;
           const ext = (post.embed || {}).external || null;
           return {
-            id: uri || Math.random().toString(),
+            id: uri || `${account.handle}:${rec.createdAt || post.indexedAt || text}`,
             name: post.author?.displayName || account.name,
             handle: authorHandle,
             avatar: post.author?.avatar || "",
@@ -533,20 +563,27 @@ export default function Home() {
   }
 
   useEffect(() => {
-    fetchNews();
+    async function refreshFeeds() {
+      await fetchNews();
+      if (socialLoaded) await fetchSocial();
+    }
+
+    void refreshFeeds();
     const interval = setInterval(() => {
-      fetchNews();
-      if (socialLoaded) fetchSocial();
+      void refreshFeeds();
     }, 10 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchNews, fetchSocial, socialLoaded]);
 
   useEffect(() => {
-    if (activeTab === "Social" && !socialLoaded && !isSocialLoading) fetchSocial();
-  }, [activeTab, socialLoaded, isSocialLoading, fetchSocial]);
+    async function loadSocialIfNeeded() {
+      if (activeTab === "Social" && !socialLoaded && !isSocialLoading) {
+        await fetchSocial();
+      }
+    }
 
-  useEffect(() => { setNewsRenderLimit(30); }, [activeFilter, platformFilter, activeTab]);
-  useEffect(() => { setSocialRenderLimit(30); }, [activeTab, socialFilter]);
+    void loadSocialIfNeeded();
+  }, [activeTab, socialLoaded, isSocialLoading, fetchSocial]);
 
   function switchTab(tab) {
     setActiveTab(tab);
@@ -555,6 +592,8 @@ export default function Home() {
     setPlatformFilter("All");
     setDealsOnly(false);
     setSocialFilter("All");
+    setNewsRenderLimit(30);
+    setSocialRenderLimit(30);
     if (tab === "News") setNewArticleCount(0);
     if (tab === "Social") setNewSocialCount(0);
   }
@@ -562,6 +601,7 @@ export default function Home() {
   function switchPlatform(p) {
     setPlatformFilter(p);
     setActiveFilter("All");
+    setNewsRenderLimit(30);
   }
 
   // Platform-aware source list and article filtering
@@ -589,9 +629,9 @@ export default function Home() {
       : parseDate(b.date) - parseDate(a.date))
     .filter(a => !searchQuery || (a.title || "").toLowerCase().includes(searchQuery.toLowerCase()) || (a.source || "").toLowerCase().includes(searchQuery.toLowerCase()));
 
-  const topStories = getTopStories(articles);
+  const topStories = getTopStories(articles, now);
   const dealCount  = articles.filter(a => isDeal(a.title)).length;
-  const trending   = getTrendingKeywords(articles);
+  const trending   = getTrendingKeywords(articles, now);
 
   return (
     <div className="wrap">
@@ -601,7 +641,7 @@ export default function Home() {
             <div className="logo">PULSECAST</div>
             <div className="tagline">Gaming News · Curated</div>
           </div>
-          <button className="refresh-btn" onClick={handleRefresh} disabled={isNewsLoading} title="Refresh">
+          <button type="button" className="refresh-btn" onClick={handleRefresh} disabled={isNewsLoading} title="Refresh">
             <svg className={isNewsLoading ? "spinning" : ""} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="23 4 23 10 17 10"/>
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
@@ -612,7 +652,7 @@ export default function Home() {
 
       <div className="nav">
         {["News", "Social", "Saved"].map(tab => (
-          <button key={tab} className={`nav-btn ${activeTab === tab ? "active" : ""}`} onClick={() => switchTab(tab)}>
+          <button type="button" key={tab} className={`nav-btn ${activeTab === tab ? "active" : ""}`} onClick={() => switchTab(tab)}>
             {tab}
             {tab === "News"   && newArticleCount > 0 && <span className="nav-badge">{newArticleCount}</span>}
             {tab === "Social" && newSocialCount > 0  && <span className="nav-badge">{newSocialCount}</span>}
@@ -626,7 +666,7 @@ export default function Home() {
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
           <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-          {searchQuery && <button className="search-clear" onClick={() => setSearchQuery("")}>×</button>}
+          {searchQuery && <button type="button" className="search-clear" onClick={() => setSearchQuery("")}>×</button>}
         </div>
       </div>
 
@@ -635,19 +675,19 @@ export default function Home() {
         <>
           <div className="pills">
             {PLATFORM_FILTERS.map(p => (
-              <button key={p} className={`pill ${platformFilter === p ? "on" : ""}`} onClick={() => switchPlatform(p)}>
+              <button type="button" key={p} className={`pill ${platformFilter === p ? "on" : ""}`} onClick={() => switchPlatform(p)}>
                 {p}
               </button>
             ))}
           </div>
           <div className="pills" style={{ paddingTop: 0 }}>
             {filterButtons.map(name => (
-              <button key={name} className={`pill ${activeFilter === name ? "on" : ""}`} onClick={() => setActiveFilter(name)}>
+              <button type="button" key={name} className={`pill ${activeFilter === name ? "on" : ""}`} onClick={() => { setActiveFilter(name); setNewsRenderLimit(30); }}>
                 {name}
               </button>
             ))}
             {dealCount > 0 && (
-              <button className={`pill deal ${dealsOnly ? "on" : ""}`} onClick={() => setDealsOnly(!dealsOnly)}>
+              <button type="button" className={`pill deal ${dealsOnly ? "on" : ""}`} onClick={() => { setDealsOnly(!dealsOnly); setNewsRenderLimit(30); }}>
                 🔥 DEALS ({dealCount})
               </button>
             )}
@@ -659,7 +699,7 @@ export default function Home() {
       {activeTab === "Social" && (
         <div className="pills">
           {SOCIAL_FILTERS.map(name => (
-            <button key={name} className={`pill ${socialFilter === name ? "on" : ""}`} onClick={() => setSocialFilter(name)}>
+            <button type="button" key={name} className={`pill ${socialFilter === name ? "on" : ""}`} onClick={() => { setSocialFilter(name); setSocialRenderLimit(30); }}>
               {name}
             </button>
           ))}
@@ -689,7 +729,7 @@ export default function Home() {
                     <div className="trending-label">Trending</div>
                     <div className="trending-pills">
                       {trending.map(word => (
-                        <button key={word} className="trending-pill" onClick={() => setSearchQuery(word)}>
+                        <button type="button" key={word} className="trending-pill" onClick={() => setSearchQuery(word)}>
                           {word}
                         </button>
                       ))}
@@ -703,13 +743,13 @@ export default function Home() {
                     <div className="ts-label">📈 Top Stories</div>
                     {topStories
                       .filter(c => !dismissedStories.includes(c.rep.link))
-                      .map((c, i) => (
+                      .map((c) => (
                       <TopStoryCard 
-                        key={i} 
+                        key={c.rep.link} 
                         title={c.rep.title} 
                         source={c.rep.source} 
                         color={c.rep.color} 
-                        time={getTimeAgo(c.rep.date)} 
+                        time={getTimeAgo(c.rep.date, now)} 
                         count={c.count} 
                         link={c.rep.link} 
                         onDismiss={() => handleDismissTopStory(c.rep.link)}
@@ -724,19 +764,19 @@ export default function Home() {
                     key={article.link}
                     title={article.title}
                     source={article.source}
-                    time={getTimeAgo(article.date)}
+                    time={getTimeAgo(article.date, now)}
                     color={article.color}
                     image={article.image}
                     link={article.link}
                     isSaved={savedArticles.some(s => s.link === article.link)}
                     onSave={() => toggleSave(article)}
                     isDealFlag={isDeal(article.title)}
-                    isBreaking={article.date && (Date.now() - article.date.getTime()) < 1800000}
+                    isBreaking={Boolean(article.date && now && (now - article.date.getTime()) < 1800000)}
                   />
                 ))}
 
                 {filteredArticles.length > newsRenderLimit && (
-                  <button className="load-more" onClick={() => setNewsRenderLimit(prev => prev + 30)}>
+                  <button type="button" className="load-more" onClick={() => setNewsRenderLimit(prev => prev + 30)}>
                     Show more ({filteredArticles.length - newsRenderLimit} remaining)
                   </button>
                 )}
@@ -766,7 +806,7 @@ export default function Home() {
                     name={post.name}
                     handle={post.handle}
                     avatar={post.avatar}
-                    time={getTimeAgo(post.date)}
+                    time={getTimeAgo(post.date, now)}
                     text={post.text}
                     link={post.link}
                     isDealFlag={isDeal(post.text)}
@@ -775,7 +815,7 @@ export default function Home() {
                   />
                 ))}
                 {filteredSocial.length > socialRenderLimit && (
-                  <button className="load-more" onClick={() => setSocialRenderLimit(prev => prev + 30)}>
+                  <button type="button" className="load-more" onClick={() => setSocialRenderLimit(prev => prev + 30)}>
                     Show more ({filteredSocial.length - socialRenderLimit} remaining)
                   </button>
                 )}
@@ -800,8 +840,8 @@ export default function Home() {
                     {filteredSaved.length} SAVED
                   </span>
                   <div className="sort-toggle">
-                    <button className={`sort-btn ${savedSort === "saved" ? "on" : ""}`} onClick={() => setSavedSort("saved")}>Date Saved</button>
-                    <button className={`sort-btn ${savedSort === "published" ? "on" : ""}`} onClick={() => setSavedSort("published")}>Published</button>
+                    <button type="button" className={`sort-btn ${savedSort === "saved" ? "on" : ""}`} onClick={() => setSavedSort("saved")}>Date Saved</button>
+                    <button type="button" className={`sort-btn ${savedSort === "published" ? "on" : ""}`} onClick={() => setSavedSort("published")}>Published</button>
                   </div>
                 </div>
                 {filteredSaved.map((article) => (
@@ -809,7 +849,7 @@ export default function Home() {
                     key={article.link}
                     title={article.title}
                     source={article.source}
-                    time={getDateLabel(article.date)}
+                    time={getDateLabel(article.date, now)}
                     color={article.color || "var(--green)"}
                     image={article.image}
                     link={article.link}
