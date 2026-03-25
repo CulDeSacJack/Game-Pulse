@@ -5,10 +5,36 @@ import { useState, useEffect, useCallback, useRef } from "react";
    DEAL DETECTION
 ═══════════════════════════════════════════ */
 const DEAL_WORDS = ["deal","deals","sale","discount","price drop","price cut","lowest price","clearance","save","savings","% off","cheapest","under $","giveaway","free game","free dlc","free download","free to keep","free play","bundle","flash sale","price match"];
+const GAMING_SIGNAL_TERMS = ["video game","videogame","gaming","gamer","dlc","expansion","patch","hotfix","mod","mods","remaster","remastered","steam","steam deck","epic games","gog","playstation","ps5","ps4","ps vr2","psvr2","xbox","game pass","nintendo","switch","switch 2","eshop","joy-con","console","controller","handheld","multiplayer","single-player","single player","co-op","coop","fps","rpg","jrpg","roguelike","metroidvania","mmo","mmorpg","battle royale","indie game","esports","nintendo direct","state of play","xbox showcase","game awards","capcom","bethesda","ubisoft","square enix","sega","devolver","larian","valve","blizzard","activision","bandai namco","fromsoftware","konami","remedy","supergiant","annapurna","505 games"];
+const OFF_TOPIC_TERMS = ["movie","movies","film","films","tv show","television","netflix","hbo","disney+","disney plus","prime video","paramount+","peacock","box office","album","music video","concert","tour","comic","comics","manga","anime","novel","book","lego","funko","fashion","sneaker","apparel"];
+
 function isDeal(text) {
   if (!text) return false;
   const t = text.toLowerCase();
   return DEAL_WORDS.some(w => t.includes(w));
+}
+
+function escapeForRegex(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function hasKeyword(text, keyword) {
+  return new RegExp(`(^|[^a-z0-9])${escapeForRegex(keyword)}([^a-z0-9]|$)`, "i").test(text);
+}
+
+function hasAnyKeyword(text, keywords) {
+  return keywords.some(keyword => hasKeyword(text, keyword));
+}
+
+function isGamingRelevant(text) {
+  if (!text) return false;
+  const normalized = text.toLowerCase();
+  const hasGamingSignal = hasAnyKeyword(normalized, GAMING_SIGNAL_TERMS);
+  const hasOffTopicSignal = hasAnyKeyword(normalized, OFF_TOPIC_TERMS);
+
+  if (isDeal(normalized)) return hasGamingSignal;
+  if (hasOffTopicSignal && !hasGamingSignal) return false;
+  return true;
 }
 
 /* ═══════════════════════════════════════════
@@ -77,6 +103,10 @@ function parseDate(str) {
   return new Date(0);
 }
 
+function stripHtml(text) {
+  return String(text || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
 function getTimeAgo(date, now) {
   const d = date instanceof Date ? date : parseDate(date);
   if (!now || !d || isNaN(d.getTime()) || d.getTime() === 0) return "";
@@ -112,6 +142,23 @@ function getDomainLabel(url) {
   } catch {
     return "";
   }
+}
+
+function getArticleTopicText(article) {
+  return [
+    article.title,
+    article.summary,
+    Array.isArray(article.categories) ? article.categories.join(" ") : "",
+  ].filter(Boolean).join(" ");
+}
+
+function getSocialTopicText(post) {
+  return [
+    post.text,
+    post.extTitle,
+    post.extDescription,
+    getDomainLabel(post.extUrl),
+  ].filter(Boolean).join(" ");
 }
 
 /* ═══════════════════════════════════════════
@@ -344,6 +391,7 @@ export default function Home() {
   const [activeFilter, setActiveFilter]   = useState("All");
   const [socialFilter, setSocialFilter]   = useState("All");
   const [dealsOnly, setDealsOnly]         = useState(false);
+  const [gamingOnly, setGamingOnly]       = useState(true);
   const [searchQuery, setSearchQuery]     = useState("");
   const [articles, setArticles]           = useState([]);
   const [socialPosts, setSocialPosts]     = useState([]);
@@ -452,6 +500,8 @@ export default function Home() {
           if (data.status === "ok" && data.items?.length) {
             fresh.push(...data.items.map(item => ({
               title: (item.title || "").trim(),
+              summary: stripHtml(item.description),
+              categories: Array.isArray(item.categories) ? item.categories.map(stripHtml).filter(Boolean) : [],
               source: source.name,
               color: source.color,
               date: parseDate(item.pubDate),
@@ -476,8 +526,10 @@ export default function Home() {
                 const linkEl = el.querySelector("link");
                 const link = linkEl?.getAttribute("href") || linkEl?.textContent?.trim() || "";
                 const rawDate = el.querySelector("pubDate")?.textContent || el.querySelector("published")?.textContent || el.querySelector("updated")?.textContent || "";
+                const summary = stripHtml(el.querySelector("description")?.textContent || el.querySelector("summary")?.textContent || "");
+                const categories = [...el.querySelectorAll("category")].map(category => stripHtml(category.textContent)).filter(Boolean);
                 const m = (el.querySelector("description")?.textContent || "").match(/<img[^>]+src=["']([^"']+)/i);
-                return { title, source: source.name, color: source.color, date: parseDate(rawDate), image: m ? m[1] : "", link };
+                return { title, summary, categories, source: source.name, color: source.color, date: parseDate(rawDate), image: m ? m[1] : "", link };
               }).filter(a => a.title && a.link));
             }
           }
@@ -531,6 +583,7 @@ export default function Home() {
             date: parseDate(rec.createdAt || post.indexedAt),
             link: postId ? `https://bsky.app/profile/${authorHandle}/post/${postId}` : `https://bsky.app/profile/${account.handle}`,
             extTitle: ext?.title || "",
+            extDescription: ext?.description || "",
             extUrl: ext?.uri || "",
             group: account.group,
           };
@@ -613,13 +666,16 @@ export default function Home() {
     ? NEWS_SOURCES.map(s => s.name)
     : NEWS_SOURCES.filter(s => s.platform === platformFilter).map(s => s.name))];
 
-  const filteredArticles = articles
+  const articlePool = gamingOnly ? articles.filter(article => isGamingRelevant(getArticleTopicText(article))) : articles;
+  const socialPool = gamingOnly ? socialPosts.filter(post => isGamingRelevant(getSocialTopicText(post))) : socialPosts;
+
+  const filteredArticles = articlePool
     .filter(a => !platformSources || platformSources.has(a.source))
     .filter(a => activeFilter === "All" || a.source === activeFilter)
     .filter(a => !dealsOnly || isDeal(a.title))
     .filter(a => !searchQuery || a.title.toLowerCase().includes(searchQuery.toLowerCase()) || a.source.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  const filteredSocial = socialPosts
+  const filteredSocial = socialPool
     .filter(p => socialFilter === "All" || p.group === socialFilter)
     .filter(p => !searchQuery || p.text.toLowerCase().includes(searchQuery.toLowerCase()) || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.handle.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -629,9 +685,9 @@ export default function Home() {
       : parseDate(b.date) - parseDate(a.date))
     .filter(a => !searchQuery || (a.title || "").toLowerCase().includes(searchQuery.toLowerCase()) || (a.source || "").toLowerCase().includes(searchQuery.toLowerCase()));
 
-  const topStories = getTopStories(articles, now);
-  const dealCount  = articles.filter(a => isDeal(a.title)).length;
-  const trending   = getTrendingKeywords(articles, now);
+  const topStories = getTopStories(articlePool, now);
+  const dealCount  = articlePool.filter(a => isDeal(a.title)).length;
+  const trending   = getTrendingKeywords(articlePool, now);
 
   return (
     <div className="wrap">
@@ -691,6 +747,9 @@ export default function Home() {
                 🔥 DEALS ({dealCount})
               </button>
             )}
+            <button type="button" className={`pill ${gamingOnly ? "on" : ""}`} onClick={() => { setGamingOnly(!gamingOnly); setNewsRenderLimit(30); setSocialRenderLimit(30); }}>
+              Gaming Only
+            </button>
           </div>
         </>
       )}
@@ -703,6 +762,9 @@ export default function Home() {
               {name}
             </button>
           ))}
+          <button type="button" className={`pill ${gamingOnly ? "on" : ""}`} onClick={() => { setGamingOnly(!gamingOnly); setNewsRenderLimit(30); setSocialRenderLimit(30); }}>
+            Gaming Only
+          </button>
         </div>
       )}
 
@@ -719,7 +781,7 @@ export default function Home() {
             ) : filteredArticles.length === 0 ? (
               <div className="empty">
                 <div className="empty-icon">📡</div>
-                <div className="empty-title">{searchQuery ? "No results" : "No articles loaded"}</div>
+                <div className="empty-title">{searchQuery ? "No results" : gamingOnly ? "No gaming articles loaded" : "No articles loaded"}</div>
               </div>
             ) : (
               <>
@@ -796,7 +858,7 @@ export default function Home() {
             ) : filteredSocial.length === 0 ? (
               <div className="empty">
                 <div className="empty-icon">🦋</div>
-                <div className="empty-title">{searchQuery ? "No results" : "No posts loaded"}</div>
+                <div className="empty-title">{searchQuery ? "No results" : gamingOnly ? "No gaming posts loaded" : "No posts loaded"}</div>
               </div>
             ) : (
               <>
