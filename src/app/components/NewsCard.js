@@ -1,5 +1,15 @@
 import { useState } from "react";
 
+function getSourceInitials(source) {
+  return source
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase();
+}
+
 export default function NewsCard({
   title,
   source,
@@ -13,8 +23,22 @@ export default function NewsCard({
   isBreaking,
   isSourceMuted = false,
   onToggleMute,
+  view = "news",
 }) {
   const [copied, setCopied] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  const sourceInitials = getSourceInitials(source);
+  const cardModeClass = view === "saved" ? "saved-card" : "news-card";
+  const hasImage = Boolean(image) && !imageFailed;
+  const accentStyle = {
+    "--source-color": color || "var(--green)",
+  };
+  const sourceMarkStyle = color
+    ? {
+        backgroundColor: color,
+        color: "#071017",
+      }
+    : undefined;
 
   async function handleShare(event) {
     event.preventDefault();
@@ -35,10 +59,13 @@ export default function NewsCard({
   }
 
   return (
-    <div className="card">
+    <article className={`card ${cardModeClass}`} style={accentStyle}>
       <div className="card-body">
         <div className="card-meta">
-          <span className="card-src" style={{ color }}>{source}</span>
+          <span className="card-source-pill">
+            <span className="source-mark" style={sourceMarkStyle}>{sourceInitials}</span>
+            <span className="card-src" style={{ color }}>{source}</span>
+          </span>
           {time && <span className="card-time">· {time}</span>}
           {isBreaking && <span className="badge-brk">BREAKING</span>}
           {isDealFlag && <span className="badge-deal">DEAL</span>}
@@ -67,13 +94,24 @@ export default function NewsCard({
           </button>
         </div>
       </div>
-      {image && (
-        <a href={link} target="_blank" rel="noopener noreferrer">
-          {/* Remote feed images come from many hosts with unknown dimensions, so a raw img is intentional here. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="card-thumb" src={image} alt="" onError={(event) => { event.target.style.display = "none"; }} />
-        </a>
-      )}
-    </div>
+      <a href={link} target="_blank" rel="noopener noreferrer" className="card-thumb-link" aria-label={title}>
+        <div className="card-thumb-shell">
+          {hasImage ? (
+            <>
+              {/* Remote feed images come from many hosts with unknown dimensions, so a raw img is intentional here. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="card-thumb" src={image} alt="" onError={() => setImageFailed(true)} />
+              <div className="card-thumb-overlay">{source}</div>
+            </>
+          ) : (
+            <div className="card-thumb-fallback">
+              <span className="source-mark large soft" style={sourceMarkStyle}>{sourceInitials}</span>
+              <span className="card-thumb-source">{source}</span>
+              <span className="card-thumb-copy">{view === "saved" ? "Saved for later" : "Fresh from the feed"}</span>
+            </div>
+          )}
+        </div>
+      </a>
+    </article>
   );
 }

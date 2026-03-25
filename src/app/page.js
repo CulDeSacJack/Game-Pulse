@@ -5,6 +5,7 @@ import BskyCard from "./components/BskyCard";
 import FeedStatusBar from "./components/FeedStatusBar";
 import NewsCard from "./components/NewsCard";
 import SettingsDrawer from "./components/SettingsDrawer";
+import { EmptyState, FeedSkeleton } from "./components/StatePanel";
 import TopStoryCard from "./components/TopStoryCard";
 import useNow from "./hooks/useNow";
 import usePersistentState from "./hooks/usePersistentState";
@@ -764,6 +765,28 @@ export default function Home() {
   const leadTopStory = showNewsHighlights ? visibleTopStories[0] : null;
   const supportingTopStories = showNewsHighlights ? visibleTopStories.slice(1) : [];
   const isNewsSourceTrayVisible = isNewsSourceTrayOpen || activeFilter !== "All";
+  const savedDealCount = savedArticles.filter((article) => isDeal(article.title)).length;
+  const recentlySavedCount = now
+    ? savedArticles.filter((article) => {
+        const savedAt = typeof article.savedAt === "number" ? article.savedAt : parseDate(article.savedAt).getTime();
+        return savedAt > 0 && (now - savedAt) <= 7 * 24 * 60 * 60 * 1000;
+      }).length
+    : 0;
+  const utilityVisibleCount = activeTab === "News"
+    ? filteredArticles.length
+    : activeTab === "Social"
+      ? filteredSocial.length
+      : filteredSaved.length;
+  const utilityHealthLabel = activeTab === "News"
+    ? `${newsStatus.successfulCount}/${newsStatus.totalCount} sources live`
+    : activeTab === "Social"
+      ? `${socialStatus.successfulCount}/${socialStatus.totalCount} accounts live`
+      : `${savedArticles.length} saved total`;
+  const utilityModeLabel = activeTab === "News"
+    ? (activeFilter !== "All" ? activeFilter : platformFilter !== "All" ? platformFilter : gamingOnly ? "Gaming filter on" : "All stories")
+    : activeTab === "Social"
+      ? (socialFilter !== "All" ? socialFilter : gamingOnly ? "Gaming filter on" : "All channels")
+      : (savedSort === "saved" ? "Sorted by save date" : "Sorted by publish date");
 
   const newsStatusItems = [
     {
@@ -955,12 +978,20 @@ export default function Home() {
       </div>
 
       <div className="search-wrap">
-        <div className="search">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8888a0" strokeWidth="2">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          <input type="text" placeholder="Search headlines, summaries, and shared links..." value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
-          {searchQuery && <button type="button" className="search-clear" onClick={() => setSearchQuery("")}>x</button>}
+        <div className="utility-bar">
+          <div className="utility-meta">
+            <span className={`utility-chip mode ${activeTab.toLowerCase()}`}>{activeTab}</span>
+            <span className="utility-chip">{utilityVisibleCount} visible</span>
+            <span className="utility-chip subtle">{utilityHealthLabel}</span>
+            <span className="utility-chip subtle">{searchQuery ? `Search: ${searchQuery}` : utilityModeLabel}</span>
+          </div>
+          <div className="search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8888a0" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" placeholder="Search headlines, summaries, and shared links..." value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
+            {searchQuery && <button type="button" className="search-clear" onClick={() => setSearchQuery("")}>x</button>}
+          </div>
         </div>
       </div>
 
@@ -1117,19 +1148,42 @@ export default function Home() {
         </>
       )}
 
+      {activeTab === "Saved" && (
+        <div className="tab-intro saved-intro">
+          <div>
+            <div className="tab-kicker">Reading List</div>
+            <div className="tab-title">Keep the headlines worth revisiting close at hand.</div>
+            <div className="tab-copy">
+              Your saved stories turn PulseCast into a personal gaming briefing deck, ready for quick catch-up sessions and deal check-ins.
+            </div>
+          </div>
+          <div className="tab-stats">
+            <span className="tab-stat">{savedArticles.length} saved total</span>
+            {recentlySavedCount > 0 && <span className="tab-stat">{recentlySavedCount} this week</span>}
+            {savedDealCount > 0 && <span className="tab-stat">{savedDealCount} deals saved</span>}
+          </div>
+        </div>
+      )}
+
       <div className="content">
         {activeTab === "News" && (
           <>
             {isNewsLoading && articles.length === 0 ? (
-              <div className="empty">
-                <div className="empty-title">Loading the Pulse...</div>
-                <div style={{ color: "var(--text2)", fontSize: "13px" }}>Fetching from {NEWS_SOURCES.length} sources</div>
-              </div>
+              <FeedSkeleton
+                mode="news"
+                title="Loading the front page"
+                detail={`Fetching from ${NEWS_SOURCES.length} sources and assembling the latest clusters.`}
+                count={4}
+                showHero={true}
+              />
             ) : filteredArticles.length === 0 ? (
-              <div className="empty">
-                <div className="empty-icon">NEWS</div>
-                <div className="empty-title">{searchQuery ? "No results" : gamingOnly ? "No gaming articles loaded" : "No articles loaded"}</div>
-              </div>
+              <EmptyState
+                mode="news"
+                label={searchQuery ? "Search" : "News Desk"}
+                title={searchQuery ? "No headlines matched that search." : gamingOnly ? "No headlines passed the current gaming filter." : "No headlines are available right now."}
+                copy={searchQuery ? "Try a broader query or clear a source/platform filter to widen the front page." : "The current source mix is quiet, filtered down, or still refreshing."}
+                hint={searchQuery ? "Clearing the search will bring the main feed back instantly." : "Try Refresh or open the source tray to loosen the selection."}
+              />
             ) : (
               <>
                 {showNewsHighlights && trending.length > 0 && (
@@ -1188,23 +1242,25 @@ export default function Home() {
                   </div>
                 )}
 
-                {filteredArticles.slice(0, newsRenderLimit).map((article) => (
-                  <NewsCard
-                    key={article.link}
-                    title={article.title}
-                    source={article.source}
-                    time={getTimeAgo(article.date, now)}
-                    color={article.color}
-                    image={article.image}
-                    link={article.link}
-                    isSaved={savedArticles.some((savedArticle) => savedArticle.link === article.link)}
-                    onSave={() => toggleSave(article)}
-                    isDealFlag={isDeal(article.title)}
-                    isBreaking={Boolean(article.date && now && (now - article.date.getTime()) < 1800000)}
-                    isSourceMuted={mutedSources.includes(article.source)}
-                    onToggleMute={() => toggleMutedSource(article.source)}
-                  />
-                ))}
+                <div className="news-list">
+                  {filteredArticles.slice(0, newsRenderLimit).map((article) => (
+                    <NewsCard
+                      key={article.link}
+                      title={article.title}
+                      source={article.source}
+                      time={getTimeAgo(article.date, now)}
+                      color={article.color}
+                      image={article.image}
+                      link={article.link}
+                      isSaved={savedArticles.some((savedArticle) => savedArticle.link === article.link)}
+                      onSave={() => toggleSave(article)}
+                      isDealFlag={isDeal(article.title)}
+                      isBreaking={Boolean(article.date && now && (now - article.date.getTime()) < 1800000)}
+                      isSourceMuted={mutedSources.includes(article.source)}
+                      onToggleMute={() => toggleMutedSource(article.source)}
+                    />
+                  ))}
+                </div>
 
                 {filteredArticles.length > newsRenderLimit && (
                   <button type="button" className="load-more" onClick={() => setNewsRenderLimit((previous) => previous + 30)}>
@@ -1219,33 +1275,40 @@ export default function Home() {
         {activeTab === "Social" && (
           <>
             {isSocialLoading && socialPosts.length === 0 ? (
-              <div className="empty">
-                <div className="empty-title">Loading Bluesky feeds...</div>
-                <div style={{ color: "var(--text2)", fontSize: "13px" }}>Fetching from {BSKY_ACCOUNTS.length} accounts</div>
-              </div>
+              <FeedSkeleton
+                mode="social"
+                title="Loading the social pulse"
+                detail={`Fetching from ${BSKY_ACCOUNTS.length} Bluesky accounts and assembling the live chatter.`}
+                count={4}
+              />
             ) : filteredSocial.length === 0 ? (
-              <div className="empty">
-                <div className="empty-icon">SKY</div>
-                <div className="empty-title">{searchQuery ? "No results" : gamingOnly ? "No gaming posts loaded" : "No posts loaded"}</div>
-              </div>
+              <EmptyState
+                mode="social"
+                label={searchQuery ? "Search" : "Social Feed"}
+                title={searchQuery ? "No social posts matched that search." : gamingOnly ? "No social posts passed the current gaming filter." : "No social posts are available right now."}
+                copy={searchQuery ? "Try a broader query or switch channel mixes to bring more posts into view." : "The current channel mix is filtered down, muted, or still refreshing."}
+                hint={searchQuery ? "Clearing the search will restore the full live stream." : "Check Bluesky Feed Health in Settings if accounts are failing."}
+              />
             ) : (
               <>
-                {filteredSocial.slice(0, socialRenderLimit).map((post) => (
-                  <BskyCard
-                    key={post.id}
-                    name={post.name}
-                    handle={post.handle}
-                    avatar={post.avatar}
-                    time={getTimeAgo(post.date, now)}
-                    text={post.text}
-                    link={post.link}
-                    isDealFlag={isDeal(post.text)}
-                    extTitle={post.extTitle}
-                    extUrl={post.extUrl}
-                    isMuted={mutedAccounts.includes(post.handle)}
-                    onToggleMute={() => toggleMutedAccount(post.handle)}
-                  />
-                ))}
+                <div className="social-list">
+                  {filteredSocial.slice(0, socialRenderLimit).map((post) => (
+                    <BskyCard
+                      key={post.id}
+                      name={post.name}
+                      handle={post.handle}
+                      avatar={post.avatar}
+                      time={getTimeAgo(post.date, now)}
+                      text={post.text}
+                      link={post.link}
+                      isDealFlag={isDeal(post.text)}
+                      extTitle={post.extTitle}
+                      extUrl={post.extUrl}
+                      isMuted={mutedAccounts.includes(post.handle)}
+                      onToggleMute={() => toggleMutedAccount(post.handle)}
+                    />
+                  ))}
+                </div>
                 {filteredSocial.length > socialRenderLimit && (
                   <button type="button" className="load-more" onClick={() => setSocialRenderLimit((previous) => previous + 30)}>
                     Show more ({filteredSocial.length - socialRenderLimit} remaining)
@@ -1260,17 +1323,23 @@ export default function Home() {
           <>
             <FeedStatusBar items={savedStatusItems} actions={savedStatusActions} />
             {filteredSaved.length === 0 ? (
-              <div className="empty">
-                <div className="empty-icon">SAVE</div>
-                <div className="empty-title">{searchQuery ? "No match" : "No saved articles yet"}</div>
-                <div style={{ color: "var(--text2)", fontSize: "13px" }}>Tap SAVE on any headline</div>
-              </div>
+              <EmptyState
+                mode="saved"
+                label={searchQuery ? "Search" : "Reading List"}
+                title={searchQuery ? "No saved stories matched that search." : "Your reading list is empty for now."}
+                copy={searchQuery ? "Try a broader query or switch the sort to scan your archive differently." : "Save any headline from News or Social and it will land here as your personal gaming backlog."}
+                hint={searchQuery ? "Clearing the search will restore the full archive." : "Saved stories keep their context, art, and source tags for later."}
+              />
             ) : (
               <>
-                <div className="saved-header">
-                  <span style={{ fontSize: "11px", color: "var(--text2)", fontWeight: 600, letterSpacing: ".1em" }}>
-                    {filteredSaved.length} SAVED
-                  </span>
+                <div className="saved-hero">
+                  <div>
+                    <div className="saved-hero-kicker">{savedSort === "saved" ? "Sorted by save date" : "Sorted by publication date"}</div>
+                    <div className="saved-hero-title">{filteredSaved.length} stories ready whenever you want a catch-up lap.</div>
+                    <div className="saved-hero-copy">
+                      Keep your personal archive skim-friendly, searchable, and ready for quick returns to the stories that mattered.
+                    </div>
+                  </div>
                   <div className="saved-controls">
                     <div className="sort-toggle">
                       <button
@@ -1290,23 +1359,26 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                {filteredSaved.map((article) => (
-                  <NewsCard
-                    key={article.link}
-                    title={article.title}
-                    source={article.source}
-                    time={getDateLabel(article.date, now)}
-                    color={article.color || "var(--green)"}
-                    image={article.image}
-                    link={article.link}
-                    isSaved={true}
-                    onSave={() => toggleSave(article)}
-                    isDealFlag={isDeal(article.title)}
-                    isBreaking={false}
-                    isSourceMuted={mutedSources.includes(article.source)}
-                    onToggleMute={() => toggleMutedSource(article.source)}
-                  />
-                ))}
+                <div className="saved-list">
+                  {filteredSaved.map((article) => (
+                    <NewsCard
+                      key={article.link}
+                      title={article.title}
+                      source={article.source}
+                      time={getDateLabel(article.date, now)}
+                      color={article.color || "var(--green)"}
+                      image={article.image}
+                      link={article.link}
+                      isSaved={true}
+                      onSave={() => toggleSave(article)}
+                      isDealFlag={isDeal(article.title)}
+                      isBreaking={false}
+                      isSourceMuted={mutedSources.includes(article.source)}
+                      onToggleMute={() => toggleMutedSource(article.source)}
+                      view="saved"
+                    />
+                  ))}
+                </div>
               </>
             )}
           </>
