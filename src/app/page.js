@@ -38,8 +38,197 @@ function createFeedStatus(totalCount) {
     totalCount,
     successfulCount: 0,
     failedNames: [],
+    failures: [],
+    recoveredCount: 0,
     lastUpdatedAt: null,
   };
+}
+
+function wait(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function getFailureTitle(label, failures) {
+  if (!failures.length) return "";
+
+  return [
+    label,
+    ...failures.map((failure) => {
+      if (typeof failure === "string") return `- ${failure}`;
+      const retryLabel = failure.attempts > 1 ? " (retried once)" : "";
+      return `- ${failure.name}: ${failure.reason}${retryLabel}`;
+    }),
+  ].join("\n");
+}
+
+function getSocialFetchErrorReason(error) {
+  if (!error) {
+    return {
+      reason: "Unknown Bluesky error",
+      retryable: false,
+    };
+  }
+
+  if (typeof error === "string") {
+    return {
+      reason: error === "timeout" ? "Request timed out after 10s" : error,
+      retryable: error === "timeout",
+    };
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+  if (error?.code === "timeout" || error?.name === "TimeoutError") {
+    return {
+      reason: message || "Request timed out after 10s",
+      retryable: true,
+    };
+  }
+
+  if (/failed to fetch|networkerror|load failed/i.test(message)) {
+    return {
+      reason: "Network error while contacting Bluesky",
+      retryable: true,
+    };
+  }
+
+  if (/aborted/i.test(message)) {
+    return {
+      reason: "Bluesky request was interrupted",
+      retryable: true,
+    };
+  }
+
+  return {
+    reason: message || "Unexpected Bluesky error",
+    retryable: false,
+  };
+}
+
+async function getSocialResponseFailure(response) {
+  let detail = "";
+
+  try {
+    const data = await response.json();
+    if (data && typeof data === "object") {
+      if (typeof data.message === "string" && data.message.trim()) {
+        detail = data.message.trim();
+      } else if (typeof data.error === "string" && data.error.trim()) {
+        detail = data.error.trim();
+      } else if (Array.isArray(data.errors) && data.errors.length > 0) {
+        detail = data.errors.map((entry) => {
+          if (typeof entry === "string") return entry;
+          if (entry && typeof entry === "object") {
+            return entry.message || entry.error || JSON.stringify(entry);
+          }
+          return "";
+        }).filter(Boolean).join("; ");
+      }
+    }
+  } catch {}
+
+  if (response.status === 404) {
+    return {
+      reason: detail || "Account not found",
+      retryable: false,
+    };
+  }
+
+  if (response.status === 429) {
+    return {
+      reason: detail || "Rate limited by Bluesky",
+      retryable: true,
+    };
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    return {
+      reason: detail || `Access denied (${response.status})`,
+      retryable: false,
+    };
+  }
+
+  if (response.status >= 500) {
+    return {
+      reason: detail || `Bluesky server error (${response.status})`,
+      retryable: true,
+    };
+  }
+
+  return {
+    reason: detail ? `HTTP ${response.status}: ${detail}` : `HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ""}`,
+    retryable: response.status === 408 || response.status === 425,
+  };
+}
+
+async function loadSocialAccountOnce(account) {
+  try {
+    const response = await withTimeout(fetch(`https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${account.handle}&limit=20&filter=posts_no_replies`), 10000);
+    if (!response.ok) {
+      const failure = await getSocialResponseFailure(response);
+      return {
+        account: account.name,
+        handle: account.handle,
+        ok: false,
+        items: [],
+        reason: failure.reason,
+        retryable: failure.retryable,
+      };
+    }
+
+    const data = await response.json();
+    if (!Array.isArray(data.feed)) {
+      return {
+        account: account.name,
+        handle: account.handle,
+        ok: false,
+        items: [],
+        reason: "Bluesky returned an unexpected feed payload",
+        retryable: false,
+      };
+    }
+
+    return {
+      account: account.name,
+      handle: account.handle,
+      ok: true,
+      items: data.feed.map((entry) => {
+        const post = entry.post || {};
+        const record = post.record || {};
+        const text = (typeof record.text === "string" ? record.text : "").trim();
+        const uri = typeof post.uri === "string" ? post.uri : "";
+        const postId = uri.split("/").pop() || "";
+        const authorHandle = post.author?.handle || account.handle;
+        const external = (post.embed || {}).external || null;
+
+        return {
+          id: uri || `${account.handle}:${record.createdAt || post.indexedAt || text}`,
+          feedHandle: account.handle,
+          name: post.author?.displayName || account.name,
+          handle: authorHandle,
+          avatar: post.author?.avatar || "",
+          text,
+          date: parseDate(record.createdAt || post.indexedAt),
+          link: postId ? `https://bsky.app/profile/${authorHandle}/post/${postId}` : `https://bsky.app/profile/${account.handle}`,
+          extTitle: external?.title || "",
+          extDescription: external?.description || "",
+          extUrl: external?.uri || "",
+          group: account.group,
+        };
+      }).filter((post) => post.text),
+    };
+  } catch (error) {
+    const failure = getSocialFetchErrorReason(error);
+    return {
+      account: account.name,
+      handle: account.handle,
+      ok: false,
+      items: [],
+      reason: failure.reason,
+      retryable: failure.retryable,
+    };
+  }
 }
 
 async function loadNewsSource(source) {
@@ -110,56 +299,39 @@ async function loadNewsSource(source) {
 }
 
 async function loadSocialAccount(account) {
-  try {
-    const response = await withTimeout(fetch(`https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${account.handle}&limit=20&filter=posts_no_replies`), 10000);
-    if (!response.ok) {
-      return { account: account.name, ok: false, items: [] };
+  let lastFailure = null;
+
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const result = await loadSocialAccountOnce(account);
+    if (result.ok) {
+      return {
+        ...result,
+        attempts: attempt,
+        recoveredOnRetry: attempt > 1,
+      };
     }
 
-    const data = await response.json();
-    if (!Array.isArray(data.feed)) {
-      return { account: account.name, ok: false, items: [] };
+    lastFailure = {
+      ...result,
+      attempts: attempt,
+    };
+
+    if (!result.retryable || attempt === 2) {
+      return lastFailure;
     }
 
-    return {
-      account: account.name,
-      ok: true,
-      items: data.feed.map((entry) => {
-        const post = entry.post || {};
-        const record = post.record || {};
-        const text = (typeof record.text === "string" ? record.text : "").trim();
-        const uri = typeof post.uri === "string" ? post.uri : "";
-        const postId = uri.split("/").pop() || "";
-        const authorHandle = post.author?.handle || account.handle;
-        const external = (post.embed || {}).external || null;
-
-        return {
-          id: uri || `${account.handle}:${record.createdAt || post.indexedAt || text}`,
-          name: post.author?.displayName || account.name,
-          handle: authorHandle,
-          avatar: post.author?.avatar || "",
-          text,
-          date: parseDate(record.createdAt || post.indexedAt),
-          link: postId ? `https://bsky.app/profile/${authorHandle}/post/${postId}` : `https://bsky.app/profile/${account.handle}`,
-          extTitle: external?.title || "",
-          extDescription: external?.description || "",
-          extUrl: external?.uri || "",
-          group: account.group,
-        };
-      }).filter((post) => post.text),
-    };
-  } catch {
-    return {
-      account: account.name,
-      ok: false,
-      items: [],
-    };
+    await wait(450 * attempt);
   }
-}
 
-function getFailureTitle(label, failedNames) {
-  if (!failedNames.length) return "";
-  return `${label}: ${failedNames.join(", ")}`;
+  return lastFailure || {
+    account: account.name,
+    handle: account.handle,
+    ok: false,
+    items: [],
+    reason: "Unknown Bluesky error",
+    retryable: false,
+    attempts: 1,
+  };
 }
 
 async function refreshNewsFeed({
@@ -203,6 +375,8 @@ async function refreshNewsFeed({
     totalCount: NEWS_SOURCES.length,
     successfulCount,
     failedNames,
+    failures: [],
+    recoveredCount: 0,
     lastUpdatedAt: successfulCount > 0 ? Date.now() : previous.lastUpdatedAt,
   }));
   setIsNewsLoading(false);
@@ -222,7 +396,17 @@ async function refreshSocialFeed({
   const results = await Promise.all(BSKY_ACCOUNTS.map(loadSocialAccount));
   const fresh = results.flatMap((result) => result.items);
   const successfulCount = results.filter((result) => result.ok).length;
-  const failedNames = results.filter((result) => !result.ok).map((result) => result.account);
+  const failures = results
+    .filter((result) => !result.ok)
+    .map((result) => ({
+      name: result.account,
+      handle: result.handle,
+      reason: result.reason || "Unknown Bluesky error",
+      retryable: Boolean(result.retryable),
+      attempts: result.attempts || 1,
+    }));
+  const failedNames = failures.map((result) => result.name);
+  const recoveredCount = results.filter((result) => result.ok && result.recoveredOnRetry).length;
   const seen = new Set();
   const deduped = fresh.filter((post) => {
     if (seen.has(post.id)) return false;
@@ -250,6 +434,8 @@ async function refreshSocialFeed({
     totalCount: BSKY_ACCOUNTS.length,
     successfulCount,
     failedNames,
+    failures,
+    recoveredCount,
     lastUpdatedAt: successfulCount > 0 ? Date.now() : previous.lastUpdatedAt,
   }));
   setIsSocialLoading(false);
@@ -332,6 +518,18 @@ export default function Home() {
     });
   });
 
+  function refreshSocialNow() {
+    void refreshSocialFeed({
+      activeTabRef,
+      seenSocialIdsRef,
+      setIsSocialLoading,
+      setNewSocialCount,
+      setSocialLoaded,
+      setSocialPosts,
+      setSocialStatus,
+    });
+  }
+
   function handleRefresh() {
     void refreshNewsFeed({
       activeTabRef,
@@ -342,15 +540,7 @@ export default function Home() {
       setNewsStatus,
     });
     if (socialLoaded || activeTab === "Social") {
-      void refreshSocialFeed({
-        activeTabRef,
-        seenSocialIdsRef,
-        setIsSocialLoading,
-        setNewSocialCount,
-        setSocialLoaded,
-        setSocialPosts,
-        setSocialStatus,
-      });
+      refreshSocialNow();
     }
   }
 
@@ -632,7 +822,7 @@ export default function Home() {
       ? {
           label: `${socialStatus.failedNames.length} failed`,
           tone: "bad",
-          title: getFailureTitle("Failed accounts", socialStatus.failedNames),
+          title: getFailureTitle("Failed accounts", socialStatus.failures),
         }
       : null,
     mutedAccounts.length > 0
@@ -653,6 +843,13 @@ export default function Home() {
           label: `Tune ${customIncludeKeywords.length}/${customExcludeKeywords.length}`,
           tone: "muted",
           title: `Keep ${customIncludeKeywords.length}, hide ${customExcludeKeywords.length}`,
+        }
+      : null,
+    socialStatus.recoveredCount > 0
+      ? {
+          label: `${socialStatus.recoveredCount} recovered`,
+          tone: "good",
+          title: `${socialStatus.recoveredCount} Bluesky account${socialStatus.recoveredCount === 1 ? "" : "s"} recovered on automatic retry.`,
         }
       : null,
   ];
@@ -692,6 +889,12 @@ export default function Home() {
   ];
 
   const socialStatusActions = [
+    socialStatus.failures.length > 0
+      ? {
+          label: `Retry failed (${socialStatus.failures.length})`,
+          onClick: refreshSocialNow,
+        }
+      : null,
     mutedAccounts.length > 0
       ? {
           label: `Clear muted (${mutedAccounts.length})`,
@@ -1140,6 +1343,10 @@ export default function Home() {
         mutedAccounts={mutedAccounts}
         onRemoveMutedSource={toggleMutedSource}
         onRemoveMutedAccount={toggleMutedAccount}
+        socialLoaded={socialLoaded}
+        socialFailures={socialStatus.failures}
+        socialRecoveredCount={socialStatus.recoveredCount}
+        onRetrySocialFailures={refreshSocialNow}
         hiddenStoriesCount={dismissedStories.length}
         onResetHiddenStories={resetHiddenStories}
         savedArticlesCount={savedArticles.length}

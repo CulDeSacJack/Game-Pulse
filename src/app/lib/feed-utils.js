@@ -268,7 +268,12 @@ export function getStatusTimeLabel(lastUpdatedAt, now) {
 
 export function withTimeout(promise, ms) {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject("timeout"), ms);
+    const timer = setTimeout(() => {
+      const error = new Error(`Request timed out after ${Math.round(ms / 1000)}s`);
+      error.name = "TimeoutError";
+      error.code = "timeout";
+      reject(error);
+    }, ms);
     promise.then(
       value => {
         clearTimeout(timer);

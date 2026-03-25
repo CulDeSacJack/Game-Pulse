@@ -138,6 +138,13 @@ header{padding:20px 20px 0;flex-shrink:0}
 .settings-list{display:flex;flex-direction:column;gap:8px}
 .settings-list-item{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;color:var(--text);font:inherit;font-size:12px;cursor:pointer;transition:all .15s;text-align:left}
 .settings-list-item:hover{border-color:var(--text2)}
+.settings-list-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px}
+.settings-list-heading{font-size:12px;font-weight:600;color:var(--text)}
+.settings-list-copy{margin-top:4px;font-size:12px;line-height:1.5;color:var(--text2)}
+.settings-mini-badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.settings-mini-badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--text2);text-transform:uppercase}
+.settings-mini-badge.info{color:var(--cyan);border-color:#174256}
+.settings-inline-note{margin-bottom:10px;font-size:12px;line-height:1.5;color:var(--text2)}
 body{
   background:
     radial-gradient(circle at top, rgba(0,194,255,.18), transparent 28%),

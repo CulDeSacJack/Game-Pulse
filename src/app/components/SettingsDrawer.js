@@ -32,6 +32,27 @@ function MutedList({ items, emptyLabel, onRemove, getLabel }) {
   );
 }
 
+function FailureList({ items, emptyLabel }) {
+  if (!items.length) return <div className="settings-empty">{emptyLabel}</div>;
+
+  return (
+    <div className="settings-list">
+      {items.map((item) => (
+        <div key={item.handle || item.name} className="settings-list-card">
+          <div className="settings-list-heading">{item.name}</div>
+          <div className="settings-list-copy">{item.reason}</div>
+          <div className="settings-mini-badges">
+            {item.attempts > 1 && <span className="settings-mini-badge">Retried once</span>}
+            <span className={`settings-mini-badge ${item.retryable ? "info" : ""}`}>
+              {item.retryable ? "Transient" : "Needs review"}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function SettingsDrawer({
   isOpen,
   onClose,
@@ -51,6 +72,10 @@ export default function SettingsDrawer({
   mutedAccounts,
   onRemoveMutedSource,
   onRemoveMutedAccount,
+  socialLoaded,
+  socialFailures,
+  socialRecoveredCount,
+  onRetrySocialFailures,
   hiddenStoriesCount,
   onResetHiddenStories,
   savedArticlesCount,
@@ -185,6 +210,32 @@ export default function SettingsDrawer({
               onRemove={onRemoveMutedAccount}
               getLabel={(item) => `@${item}`}
             />
+          </section>
+
+          <section className="settings-section">
+            <div className="settings-section-title">Bluesky Feed Health</div>
+            {!socialLoaded ? (
+              <div className="settings-empty">Open the Social tab or refresh once to inspect account health.</div>
+            ) : (
+              <>
+                {socialRecoveredCount > 0 && (
+                  <div className="settings-inline-note">
+                    {socialRecoveredCount} account{socialRecoveredCount === 1 ? "" : "s"} recovered on automatic retry during the last refresh.
+                  </div>
+                )}
+                <FailureList
+                  items={socialFailures}
+                  emptyLabel="All tracked Bluesky accounts loaded on the last refresh."
+                />
+                {socialFailures.length > 0 && (
+                  <div className="settings-actions">
+                    <button type="button" className="settings-action" onClick={onRetrySocialFailures}>
+                      Retry Failed Accounts
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </section>
 
           <section className="settings-section">
