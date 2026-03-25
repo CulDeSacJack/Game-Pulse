@@ -26,6 +26,18 @@ header{padding:20px 20px 0;flex-shrink:0}
 .search input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:14px;font-family:'Outfit',sans-serif}
 .search input::placeholder{color:var(--text2)}
 .search-clear{background:none;border:none;color:var(--text2);cursor:pointer;font-size:16px;padding:0;line-height:1}
+.status-panel{padding:0 20px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.status-chips{display:flex;flex-wrap:wrap;gap:6px}
+.status-chip{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:11px;font-weight:600;letter-spacing:.02em}
+.status-chip.good{color:var(--green);border-color:#1f5037}
+.status-chip.info{color:var(--cyan);border-color:#174256}
+.status-chip.warn{color:var(--gold);border-color:#5a4517}
+.status-chip.bad{color:#ff8b95;border-color:#5a1f2b}
+.status-chip.muted{color:var(--text2)}
+.status-actions{display:flex;flex-wrap:wrap;gap:6px}
+.status-action{background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:5px 10px;font-size:11px;font-weight:600;font-family:'Outfit',sans-serif;color:var(--text2);cursor:pointer;transition:all .15s}
+.status-action:hover{color:var(--text);border-color:var(--text2)}
+.status-action.danger:hover{color:#ff8b95;border-color:#5a1f2b}
 .pills{display:flex;gap:6px;padding:0 20px 12px;flex-wrap:wrap;flex-shrink:0}
 .pills::-webkit-scrollbar{display:none}
 .pill{flex-shrink:0;padding:6px 14px;border-radius:99px;font-size:11px;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap}
@@ -49,10 +61,11 @@ header{padding:20px 20px 0;flex-shrink:0}
 .card:hover .card-title{color:#fff}
 .card-thumb{width:68px;height:68px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--surface2)}
 .card-actions{margin-top:8px;display:flex;align-items:center;gap:12px}
-.save-btn,.share-btn{background:none;border:none;cursor:pointer;color:var(--text2);font-size:11px;font-family:'Outfit',sans-serif;font-weight:600;display:flex;align-items:center;gap:4px;padding:0;transition:color .15s}
+.save-btn,.share-btn,.mute-btn{background:none;border:none;cursor:pointer;color:var(--text2);font-size:11px;font-family:'Outfit',sans-serif;font-weight:600;display:flex;align-items:center;gap:4px;padding:0;transition:color .15s}
 .save-btn:hover,.save-btn.on{color:var(--green)}
 .share-btn:hover{color:var(--cyan)}
 .share-btn.on{color:var(--cyan)}
+.mute-btn:hover,.mute-btn.on{color:var(--gold)}
 .skel{background:linear-gradient(90deg,var(--surface) 25%,var(--surface2) 50%,var(--surface) 75%);background-size:200% 100%;animation:shimmer 1.6s infinite;border-radius:8px}
 .trending{margin-bottom:16px}
 .trending-label{font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.12em;text-transform:uppercase;padding:4px 0 8px}
@@ -84,13 +97,14 @@ header{padding:20px 20px 0;flex-shrink:0}
 .load-more{display:block;width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:12px;font-weight:600;font-family:'Outfit',sans-serif;cursor:pointer;text-align:center;margin-top:8px;transition:all .15s}
 .load-more:hover{border-color:var(--green);color:var(--green)}
 .divider{font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.12em;text-transform:uppercase;padding:16px 0 10px;border-top:1px solid var(--border);margin-top:4px}
-.saved-header{display:flex;align-items:center;justify-content:space-between;padding:4px 0 12px}
+.saved-header{display:flex;align-items:center;justify-content:space-between;padding:4px 0 12px;gap:10px;flex-wrap:wrap}
+.saved-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .sort-toggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .sort-btn{background:none;border:none;padding:5px 10px;font-size:11px;font-weight:600;font-family:'Outfit',sans-serif;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap}
 .sort-btn.on{background:var(--surface2);color:var(--text)}
 .sort-btn:hover:not(.on){color:var(--text)}
 @media(max-width:400px){
   header{padding:16px 16px 0}.nav{padding:12px 16px 0}.search-wrap{padding:10px 16px}
-  .pills{padding:0 16px 10px}.content{padding:0 16px 40px}.logo{font-size:24px}
+  .status-panel{padding:0 16px 10px}.pills{padding:0 16px 10px}.content{padding:0 16px 40px}.logo{font-size:24px}
   .card{padding:12px}.card-title{font-size:13px}.card-thumb{width:58px;height:58px}
 }
