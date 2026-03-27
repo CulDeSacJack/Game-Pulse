@@ -28,7 +28,7 @@ export default function TopStoryCard({ title, source, color, time, count, link, 
         x
       </button>
 
-      <a href={link} target="_blank" rel="noopener noreferrer" className="ts-link">
+      <a href={link} target="_blank" rel="noopener noreferrer" className="ts-link" title={title}>
         <div className="ts-kicker">{isLead ? "Lead Story" : "Cross-Source Pickup"}</div>
         <div className="ts-title">{title}</div>
         {isLead && (
