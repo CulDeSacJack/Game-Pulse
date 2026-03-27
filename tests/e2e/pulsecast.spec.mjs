@@ -39,6 +39,7 @@ test("loads the social feed and lets you mute a post source", async ({ page }) =
   await page.goto("/");
 
   await page.locator(".nav").getByRole("button", { name: "Social" }).click();
+  await page.getByRole("button", { name: "Deals" }).click();
 
   const warioCard = page.locator(".bsky-card").filter({ hasText: "@wario64.bsky.social" });
   await expect(warioCard).toContainText("Deal: Hades II is 20% off on Steam today.");
