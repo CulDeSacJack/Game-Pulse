@@ -464,6 +464,7 @@ export default function Home() {
   const [lastClearedSaved, setLastClearedSaved] = useState([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNewsSourceTrayOpen, setIsNewsSourceTrayOpen] = useState(false);
+  const searchInputRef = useRef(null);
   const seenLinksRef = useRef(new Set());
   const seenSocialIdsRef = useRef(new Set());
   const activeTabRef = useRef("News");
@@ -568,6 +569,40 @@ export default function Home() {
 
     void loadSocialIfNeeded();
   }, [activeTab, isSocialLoading, socialLoaded]);
+
+  useEffect(() => {
+    function isEditableTarget(target) {
+      if (!(target instanceof HTMLElement)) return false;
+      return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+    }
+
+    function handleGlobalKeyDown(event) {
+      if (isSettingsOpen) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      const searchInput = searchInputRef.current;
+      if (!searchInput) return;
+
+      if (event.key === "/" && !isEditableTarget(event.target)) {
+        event.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+        return;
+      }
+
+      if (event.key === "Escape" && document.activeElement === searchInput) {
+        event.preventDefault();
+        if (searchQuery) {
+          setSearchQuery("");
+        } else {
+          searchInput.blur();
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [isSettingsOpen, searchQuery]);
 
   function switchTab(tab) {
     updatePreferences({
@@ -989,7 +1024,15 @@ export default function Home() {
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8888a0" strokeWidth="2">
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
-            <input type="text" placeholder="Search headlines, summaries, and shared links..." value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search headlines, summaries, and shared links..."
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              aria-label="Search feeds"
+              title="Press / to focus search"
+            />
             {searchQuery && <button type="button" className="search-clear" onClick={() => setSearchQuery("")} aria-label="Clear search">x</button>}
           </div>
         </div>

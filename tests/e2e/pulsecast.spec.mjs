@@ -19,6 +19,13 @@ test("supports search, saving, and settings interactions", async ({ page }) => {
   await page.goto("/");
 
   const search = page.getByPlaceholder("Search headlines, summaries, and shared links...");
+  await page.keyboard.press("/");
+  await expect(search).toBeFocused();
+
+  await search.fill("Mario Kart World");
+  await page.keyboard.press("Escape");
+  await expect(search).toHaveValue("");
+
   await search.fill("Mario Kart World");
   await expect(page.getByText("Mario Kart World update adds mirror mode")).toBeVisible();
   await expect(page.getByText("Ghost of Yotei gameplay deep dive teases stance swaps")).toHaveCount(0);
